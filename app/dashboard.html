@@ -637,6 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchAll() {
         try {
             await Promise.all([
+                fetchHealth(),
                 fetchMetrics(),
                 fetchFunnel(),
                 fetchHeatmap(),
@@ -646,6 +647,24 @@ document.addEventListener('DOMContentLoaded', () => {
             elUpdated.textContent = `Last update: ${formatTimestamp()}`;
         } catch (e) {
             console.error("Error fetching data:", e);
+        }
+    }
+
+    async function fetchHealth() {
+        const res = await fetch(`/health`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        const elStatus = document.getElementById('system-status');
+        elStatus.textContent = `System ${data.status === 'OK' ? 'Healthy' : 'Degraded'}`;
+        
+        const pulse = document.querySelector('.pulse-dot');
+        if (data.status === 'OK') {
+            pulse.style.backgroundColor = 'var(--status-good)';
+            pulse.style.boxShadow = '0 0 10px var(--status-good)';
+        } else {
+            pulse.style.backgroundColor = 'var(--status-warn)';
+            pulse.style.boxShadow = '0 0 10px var(--status-warn)';
         }
     }
 
@@ -705,13 +724,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!res.ok) return;
         const data = await res.json();
         
-        if (data.status === 'insufficient_data') {
+        if (data.data_confidence === 'insufficient_data') {
             elHeatmap.innerHTML = `<div class="funnel-skeleton">Not enough events (${data.event_count})</div>`;
             elHeatmapConf.textContent = 'CONFIDENCE: LOW';
             return;
         }
         
-        elHeatmapConf.textContent = `CONFIDENCE: ${data.confidence.toUpperCase()}`;
+        elHeatmapConf.textContent = `CONFIDENCE: ${data.data_confidence.toUpperCase()}`;
         
         if (!data.zones || Object.keys(data.zones).length === 0) {
             elHeatmap.innerHTML = '<div class="funnel-skeleton">No Zone Data</div>';
