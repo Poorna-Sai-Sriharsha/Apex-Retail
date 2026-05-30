@@ -1,0 +1,33 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--cov=app",
+    "--cov=pipeline",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=70",
+    "-v",
+]
+
+[tool.coverage.run]
+source = ["app", "pipeline"]
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+    "pipeline/detect.py",      # Requires GPU/OpenCV for full test
+    "pipeline/generate_synthetic.py", # Utility, not core API
+    "pipeline/replay.py",             # Utility, not core API
+    "pipeline/staff_classifier.py",   # Legacy un-mocked
+    "pipeline/tracker.py",            # Legacy un-mocked
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]

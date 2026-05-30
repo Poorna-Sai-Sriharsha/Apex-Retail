@@ -1,0 +1,31 @@
+{
+  "store_id": "APEX_RETAIL",
+  "camera_id": "CAM_FLOOR_01",
+  "open_hours": {
+    "open": "09:00",
+    "close": "21:00"
+  },
+  "cameras": {
+    "CAM_FLOOR_01": {
+      "type": "floor",
+      "resolution": [1920, 1080],
+      "fov_polygon": [[0, 0], [1920, 0], [1920, 1080], [0, 1080]],
+      "description": "Main floor camera covering Skincare"
+    }
+  },
+  "zones": [
+    {
+      "zone_id": "SKINCARE",
+      "cameras": ["CAM_FLOOR_01"],
+      "polygon": [[50, 50], [480, 50], [480, 400], [50, 400]],
+      "description": "Skincare product aisle"
+    }
+  ],
+  "staff_uniform_hsv": {
+    "hue_low": 100,
+    "hue_high": 130,
+    "sat_low": 60,
+    "val_low": 60,
+    "description": "Staff wear blue/teal uniforms (HSV hue 100-130)"
+  }
+}

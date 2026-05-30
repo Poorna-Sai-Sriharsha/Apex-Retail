@@ -1,0 +1,31 @@
+{
+  "store_id": "APEX_RETAIL",
+  "camera_id": "CAM_ENTRY_01",
+  "open_hours": {
+    "open": "09:00",
+    "close": "21:00"
+  },
+  "cameras": {
+    "CAM_ENTRY_01": {
+      "type": "entry",
+      "resolution": [1920, 1080],
+      "fov_polygon": [[0, 400], [1920, 400], [1920, 1080], [0, 1080]],
+      "description": "Entry/Exit threshold camera facing the main door"
+    }
+  },
+  "entry_line": {
+    "camera": "CAM_ENTRY_01",
+    "y": 540,
+    "axis": "horizontal",
+    "direction": "top_to_bottom",
+    "description": "Virtual line at y=540. Person moving downward (outside->inside) = ENTRY"
+  },
+  "zones": [],
+  "staff_uniform_hsv": {
+    "hue_low": 100,
+    "hue_high": 130,
+    "sat_low": 60,
+    "val_low": 60,
+    "description": "Staff wear blue/teal uniforms (HSV hue 100-130)"
+  }
+}

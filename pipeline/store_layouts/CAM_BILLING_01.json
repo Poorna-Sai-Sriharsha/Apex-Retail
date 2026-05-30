@@ -1,0 +1,31 @@
+{
+  "store_id": "APEX_RETAIL",
+  "camera_id": "CAM_BILLING_01",
+  "open_hours": {
+    "open": "09:00",
+    "close": "21:00"
+  },
+  "cameras": {
+    "CAM_BILLING_01": {
+      "type": "billing",
+      "resolution": [1920, 1080],
+      "fov_polygon": [[0, 0], [1920, 0], [1920, 1080], [0, 1080]],
+      "description": "Billing counter area camera"
+    }
+  },
+  "zones": [
+    {
+      "zone_id": "BILLING",
+      "cameras": ["CAM_BILLING_01"],
+      "polygon": [[980, 0], [1920, 0], [1920, 1080], [980, 1080]],
+      "description": "Billing counter and checkout area"
+    }
+  ],
+  "staff_uniform_hsv": {
+    "hue_low": 100,
+    "hue_high": 130,
+    "sat_low": 60,
+    "val_low": 60,
+    "description": "Staff wear blue/teal uniforms (HSV hue 100-130)"
+  }
+}

@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Retail | Store Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+:root {
+    /* Premium Greenish-White Dark Theme */
+    --bg-dark: #0f1513;        /* Deep obsidian green */
+    --bg-panel: #161e1b;       /* Elevated dark slate */
+    --bg-glass: rgba(26, 36, 32, 0.65); 
+    
+    --text-main: #e8f4ef;      /* Greenish white */
+    --text-muted: #8cae9f;     /* Muted sea green */
+    
+    --accent-primary: #52c89f; /* Jade accent */
+    --accent-glow: rgba(82, 200, 159, 0.15);
+    
+    --status-good: #4ae09a;
+    --status-warn: #e0b84a;
+    --status-crit: #e05e4a;
+    
+    --border-subtle: rgba(82, 200, 159, 0.12);
+    --border-highlight: rgba(82, 200, 159, 0.25);
+    
+    --shadow-base: 0 8px 32px rgba(0, 0, 0, 0.4);
+    
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* App Layout */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 260px;
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    position: fixed;
+    height: 100vh;
+    z-index: 10;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 48px;
+}
+
+.logo {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent-primary), #2a8a65);
+    border-radius: 8px;
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.brand h1 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-main);
+}
+
+.sidebar nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--text-main);
+}
+
+.nav-item.active {
+    background-color: var(--accent-glow);
+    color: var(--accent-primary);
+    border: 1px solid var(--border-highlight);
+}
+
+.store-selector {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.store-selector label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.store-selector select {
+    background-color: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-main);
+    padding: 10px;
+    border-radius: 6px;
+    font-family: var(--font-family);
+    outline: none;
+    cursor: pointer;
+}
+
+/* Main Dashboard Content */
+.dashboard-content {
+    flex: 1;
+    margin-left: 260px;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+/* Topbar */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.page-title h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(10px);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--status-good);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--status-good);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(74, 224, 154, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(74, 224, 154, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(74, 224, 154, 0); }
+}
+
+.last-updated {
+    color: var(--text-muted);
+    margin-left: 12px;
+    border-left: 1px solid var(--border-subtle);
+    padding-left: 12px;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+}
+
+.metric-card {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--shadow-base);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--border-highlight);
+}
+
+.metric-card.highlight {
+    background: linear-gradient(180deg, var(--bg-glass) 0%, rgba(82, 200, 159, 0.05) 100%);
+    border-top: 2px solid var(--accent-primary);
+}
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.metric-header h3 {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.metric-icon {
+    color: var(--accent-primary);
+    background: var(--accent-glow);
+    padding: 8px;
+    border-radius: 8px;
+    display: flex;
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    text-shadow: 0 0 20px rgba(255,255,255,0.1);
+}
+
+.metric-trend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.metric-trend.positive { color: var(--status-good); }
+.metric-trend.negative { color: var(--status-warn); }
+
+/* Main Split */
+.dashboard-split {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+}
+
+.col-main { display: flex; flex-direction: column; gap: 24px; }
+.col-side { display: flex; flex-direction: column; }
+
+/* Panels */
+.panel {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: var(--shadow-base);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 16px;
+}
+
+.panel-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.badge {
+    background: var(--accent-glow);
+    color: var(--accent-primary);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Funnel Visualization */
+.funnel-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.funnel-stage {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.stage-label {
+    width: 120px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.stage-bar-wrapper {
+    flex: 1;
+    height: 32px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+}
+
+.stage-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), #2a8a65);
+    border-radius: 6px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%; /* JS will animate */
+}
+
+.stage-count {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+}
+
+.stage-drop {
+    width: 80px;
+    text-align: right;
+    font-size: 0.85rem;
+    color: var(--status-crit);
+}
+
+/* Heatmap */
+.heatmap-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+}
+
+.heatmap-zone {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.zone-intensity {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--accent-primary);
+    opacity: 0.2;
+    z-index: 0;
+    transition: height 1s ease;
+}
+
+.zone-name {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    z-index: 1;
+}
+
+.zone-val {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-main);
+    z-index: 1;
+}
+
+/* Anomalies */
+.anomalies-panel {
+    flex: 1;
+}
+
+.anomalies-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.anomalies-list::-webkit-scrollbar { width: 4px; }
+.anomalies-list::-webkit-scrollbar-thumb { background: var(--border-highlight); border-radius: 4px; }
+
+.anomaly-item {
+    background: rgba(0,0,0,0.2);
+    border-left: 3px solid var(--status-warn);
+    padding: 16px;
+    border-radius: 0 8px 8px 0;
+    animation: slideIn 0.4s ease forwards;
+}
+
+.anomaly-item.critical { border-left-color: var(--status-crit); }
+.anomaly-item.info { border-left-color: var(--status-good); }
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.anomaly-type {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.anomaly-time { color: var(--text-muted); font-size: 0.75rem; }
+.anomaly-action { font-size: 0.9rem; margin-top: 8px; color: var(--text-main); }
+.anomaly-details { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; }
+
+.funnel-skeleton {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 20px 0;
+}
+
+</style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo"></div>
+                <h1>Apex Retail</h1>
+            </div>
+            <nav>
+                <div class="nav-item active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    Live Dashboard
+                </div>
+                <div class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                    Store Configuration
+                </div>
+                <div class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    Settings
+                </div>
+            </nav>
+            <div class="camera-list-container" style="margin-top: auto;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block;">Active Cameras</label>
+                <div id="camera-list" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="dashboard-content">
+            <header class="topbar">
+                <div class="page-title">
+                    <h2>Store Intelligence Overview</h2>
+                    <p class="subtitle">Live insights powered by Edge Computer Vision</p>
+                </div>
+                <div class="status-indicator">
+                    <div class="pulse-dot"></div>
+                    <span id="system-status">System Healthy</span>
+                    <span class="last-updated" id="last-updated">Last update: --:--:--</span>
+                </div>
+            </header>
+
+            <!-- Metrics Grid -->
+            <section class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Unique Visitors</h3>
+                        <div class="metric-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        </div>
+                    </div>
+                    <div class="metric-value" id="val-visitors">--</div>
+                    <div class="metric-trend positive"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg> Today's Window</div>
+                </div>
+
+                <div class="metric-card highlight">
+                    <div class="metric-header">
+                        <h3>Conversion Rate</h3>
+                        <div class="metric-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        </div>
+                    </div>
+                    <div class="metric-value" id="val-conversion">--%</div>
+                    <div class="metric-trend positive"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg> Visitors → Purchases</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Billing Queue Depth</h3>
+                        <div class="metric-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        </div>
+                    </div>
+                    <div class="metric-value" id="val-queue">--</div>
+                    <div class="metric-trend negative" id="queue-trend">Max line depth</div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Abandonment Rate</h3>
+                        <div class="metric-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        </div>
+                    </div>
+                    <div class="metric-value" id="val-abandon">--%</div>
+                    <div class="metric-trend negative">Left queue without purchase</div>
+                </div>
+            </section>
+
+            <!-- Main Content Split -->
+            <div class="dashboard-split">
+                <!-- Left Column -->
+                <div class="col-main">
+                    <!-- Funnel Section -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h3>Conversion Funnel</h3>
+                        </div>
+                        <div class="funnel-container" id="funnel-stages">
+                            <!-- Populated via JS -->
+                            <div class="funnel-skeleton">Awaiting Data...</div>
+                        </div>
+                    </section>
+
+                    <!-- Heatmap Section -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h3>Zone Engagement Heatmap</h3>
+                            <span class="badge" id="heatmap-confidence">CONFIDENCE: --</span>
+                        </div>
+                        <div class="heatmap-container" id="heatmap-zones">
+                            <!-- Populated via JS -->
+                            <div class="funnel-skeleton">Awaiting Data...</div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Right Column -->
+                <div class="col-side">
+                    <!-- Anomalies Section -->
+                    <section class="panel anomalies-panel">
+                        <div class="panel-header">
+                            <h3>Real-time Anomalies</h3>
+                        </div>
+                        <div class="anomalies-list" id="anomalies-list">
+                            <!-- Populated via JS -->
+                            <div class="funnel-skeleton">No Anomalies Detected</div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    // We only have one unified store now
+    const currentStore = "APEX_RETAIL";
+    let currentCamera = "ALL";
+    
+    // DOM Elements
+    const elVisitors = document.getElementById('val-visitors');
+    const elConversion = document.getElementById('val-conversion');
+    const elQueue = document.getElementById('val-queue');
+    const elAbandon = document.getElementById('val-abandon');
+    const elUpdated = document.getElementById('last-updated');
+    const elFunnel = document.getElementById('funnel-stages');
+    const elHeatmap = document.getElementById('heatmap-zones');
+    const elHeatmapConf = document.getElementById('heatmap-confidence');
+    const elAnomalies = document.getElementById('anomalies-list');
+    const elCameras = document.getElementById('camera-list');
+
+    // Formatting utilities
+    const formatPercent = (val) => (val * 100).toFixed(1) + '%';
+    const formatTime = (ms) => {
+        if (!ms) return '0s';
+        const sec = Math.floor(ms / 1000);
+        const min = Math.floor(sec / 60);
+        if (min > 0) return `${min}m ${sec % 60}s`;
+        return `${sec}s`;
+    };
+    const formatTimestamp = () => {
+        const now = new Date();
+        return now.toLocaleTimeString();
+    };
+
+    // API Calls
+    async function fetchAll() {
+        try {
+            await Promise.all([
+                fetchMetrics(),
+                fetchFunnel(),
+                fetchHeatmap(),
+                fetchAnomalies(),
+                fetchCameras()
+            ]);
+            elUpdated.textContent = `Last update: ${formatTimestamp()}`;
+        } catch (e) {
+            console.error("Error fetching data:", e);
+        }
+    }
+
+    async function fetchMetrics() {
+        const res = await fetch(`/stores/${currentStore}/metrics?camera_id=${currentCamera}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        elVisitors.textContent = data.unique_visitors;
+        elConversion.textContent = formatPercent(data.conversion_rate);
+        elQueue.textContent = data.queue_depth;
+        elAbandon.textContent = formatPercent(data.abandonment_rate);
+    }
+
+    async function fetchFunnel() {
+        const res = await fetch(`/stores/${currentStore}/funnel?camera_id=${currentCamera}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (!data.stages || data.stages.length === 0) {
+            elFunnel.innerHTML = '<div class="funnel-skeleton">No Funnel Data</div>';
+            return;
+        }
+
+        const maxCount = data.stages[0].count || 1; // Entry usually highest
+        
+        let html = '';
+        data.stages.forEach((stage, i) => {
+            const pct = (stage.count / maxCount) * 100;
+            let dropHtml = '';
+            
+            if (i > 0) {
+                const prev = data.stages[i-1].count;
+                if (prev > 0) {
+                    const drop = ((prev - stage.count) / prev * 100).toFixed(0);
+                    if (drop > 0) dropHtml = `<div class="stage-drop">-${drop}% drop</div>`;
+                }
+            }
+
+            html += `
+                <div class="funnel-stage">
+                    <div class="stage-label">${stage.stage}</div>
+                    <div class="stage-bar-wrapper">
+                        <div class="stage-bar" style="width: ${pct}%"></div>
+                        <span class="stage-count">${stage.count}</span>
+                    </div>
+                    ${dropHtml}
+                </div>
+            `;
+        });
+        
+        elFunnel.innerHTML = html;
+    }
+
+    async function fetchHeatmap() {
+        const res = await fetch(`/stores/${currentStore}/heatmap?camera_id=${currentCamera}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.status === 'insufficient_data') {
+            elHeatmap.innerHTML = `<div class="funnel-skeleton">Not enough events (${data.event_count})</div>`;
+            elHeatmapConf.textContent = 'CONFIDENCE: LOW';
+            return;
+        }
+        
+        elHeatmapConf.textContent = `CONFIDENCE: ${data.confidence.toUpperCase()}`;
+        
+        if (!data.zones || Object.keys(data.zones).length === 0) {
+            elHeatmap.innerHTML = '<div class="funnel-skeleton">No Zone Data</div>';
+            return;
+        }
+
+        let html = '';
+        for (const zone of data.zones) {
+            const hPct = zone.normalised_score;
+            html += `
+                <div class="heatmap-zone">
+                    <div class="zone-intensity" style="height: ${hPct}%"></div>
+                    <span class="zone-name">${zone.zone_id}</span>
+                    <span class="zone-val">${formatTime(zone.avg_dwell_ms)}</span>
+                </div>
+            `;
+        }
+        
+        elHeatmap.innerHTML = html;
+    }
+
+    async function fetchAnomalies() {
+        const res = await fetch(`/stores/${currentStore}/anomalies?camera_id=${currentCamera}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (!data.anomalies || data.anomalies.length === 0) {
+            elAnomalies.innerHTML = '<div class="funnel-skeleton">System Normal. No anomalies detected.</div>';
+            return;
+        }
+        
+        let html = '';
+        for (const anomaly of data.anomalies) {
+            const timeStr = new Date(anomaly.timestamp).toLocaleTimeString();
+            html += `
+                <div class="anomaly-item ${anomaly.severity.toLowerCase()}">
+                    <div class="anomaly-type">
+                        <span style="color: ${anomaly.severity.toLowerCase() === 'critical' ? 'var(--status-crit)' : 'var(--status-warn)'}">
+                            ${anomaly.anomaly_type.toUpperCase().replace('_', ' ')}
+                        </span>
+                        <span class="anomaly-time">${timeStr}</span>
+                    </div>
+                    <div class="anomaly-action">${anomaly.suggested_action}</div>
+                    <div class="anomaly-details">${JSON.stringify(anomaly.details).replace(/["{}]/g, '').replace(/:/g, ': ').replace(/,/g, ' | ')}</div>
+                </div>
+            `;
+        }
+        elAnomalies.innerHTML = html;
+    }
+
+    async function fetchCameras() {
+        const res = await fetch(`/stores/${currentStore}/cameras`);
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        let html = `
+            <div class="camera-item" data-camera="ALL" style="background: ${currentCamera === 'ALL' ? 'var(--accent-glow)' : 'rgba(0,0,0,0.2)'}; border-color: ${currentCamera === 'ALL' ? 'var(--accent-primary)' : 'var(--border-subtle)'}; padding: 10px; border-radius: 6px; border-style: solid; border-width: 1px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: ${currentCamera === 'ALL' ? 'var(--accent-primary)' : 'inherit'};">ALL CAMERAS</span>
+            </div>
+        `;
+        for (const cam of data.cameras) {
+            const isActive = currentCamera === cam.camera_id;
+            html += `
+                <div class="camera-item" data-camera="${cam.camera_id}" style="background: ${isActive ? 'var(--accent-glow)' : 'rgba(0,0,0,0.2)'}; border-color: ${isActive ? 'var(--accent-primary)' : 'var(--border-subtle)'}; padding: 10px; border-radius: 6px; border-style: solid; border-width: 1px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                    <span style="font-size: 0.85rem; font-weight: ${isActive ? '600' : '500'}; color: ${isActive ? 'var(--accent-primary)' : 'inherit'};">${cam.camera_id}</span>
+                    <span style="font-size: 0.75rem; color: var(--status-good); display: flex; align-items: center; gap: 4px;">
+                        <div class="pulse-dot" style="width: 6px; height: 6px; animation: none; box-shadow: none;"></div> Active
+                    </span>
+                </div>
+            `;
+        }
+        elCameras.innerHTML = html;
+
+        document.querySelectorAll('.camera-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                currentCamera = e.currentTarget.getAttribute('data-camera');
+                elAnomalies.innerHTML = '';
+                fetchAll();
+            });
+        });
+    }
+
+    // Initial fetch
+    fetchAll();
+    
+    // Poll every 5 seconds
+    setInterval(fetchAll, 5000);
+});
+
+</script>
+</body>
+</html>
