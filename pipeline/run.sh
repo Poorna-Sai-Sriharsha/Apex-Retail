@@ -12,7 +12,7 @@
 #       ENTRY_camera.mp4
 #       FLOOR_camera.mp4
 #       BILLING_camera.mp4
-#     STORE_BLR_002/
+#     ST1008/
 #       ...
 #
 # Output:
@@ -76,7 +76,7 @@ if [ -n "$API_URL" ]; then
 fi
 
 python -m pipeline.detect \
-    --clips-dir "$CLIPS_DIR" \
+    --footage-dir "$CLIPS_DIR" \
     --layouts-dir "$LAYOUTS_DIR" \
     --output-dir "$OUTPUT_DIR" \
     --clip-start "$CLIP_START" \
@@ -106,7 +106,7 @@ if [ -n "$API_URL" ]; then
 fi
 
 echo ""
-echo "Dashboard: $API_URL/dashboard/STORE_BLR_002"
-echo "Metrics:   curl $API_URL/stores/STORE_BLR_002/metrics"
+echo "Dashboard: $API_URL/dashboard/ST1008"
+echo "Metrics:   curl $API_URL/stores/ST1008/metrics"
 echo ""
 echo "=== Done ==="

@@ -25,7 +25,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import get_db
-from app.main import get_logger
+from app.logging_config import get_logger
 from app.metrics import _window_bounds
 from app.models import (
     AnomalyDetail,
@@ -58,22 +58,22 @@ async def _get_conversion_rate(
             and_(base, EventORM.event_type.in_([EventType.ENTRY.value, EventType.REENTRY.value]))
         )
     )
-    unique_visitors = uv.scalar_one() or 0  # pragma: no cover
-    if unique_visitors == 0:  # pragma: no cover
-        return 0.0  # pragma: no cover
-  # pragma: no cover
-    join_q = await db.execute(  # pragma: no cover
-        select(func.count(func.distinct(EventORM.visitor_id))).where(  # pragma: no cover
-            and_(base, EventORM.event_type == EventType.BILLING_QUEUE_JOIN.value)  # pragma: no cover
-        )  # pragma: no cover
-    )  # pragma: no cover
-    abandon_q = await db.execute(  # pragma: no cover
-        select(func.count(func.distinct(EventORM.visitor_id))).where(  # pragma: no cover
-            and_(base, EventORM.event_type == EventType.BILLING_QUEUE_ABANDON.value)  # pragma: no cover
-        )  # pragma: no cover
-    )  # pragma: no cover
-    converted = max(0, (join_q.scalar_one() or 0) - (abandon_q.scalar_one() or 0))  # pragma: no cover
-    return round(converted / unique_visitors, 4)  # pragma: no cover
+    unique_visitors = uv.scalar_one() or 0
+    if unique_visitors == 0:
+        return 0.0
+
+    join_q = await db.execute(
+        select(func.count(func.distinct(EventORM.visitor_id))).where(
+            and_(base, EventORM.event_type == EventType.BILLING_QUEUE_JOIN.value)
+        )
+    )
+    abandon_q = await db.execute(
+        select(func.count(func.distinct(EventORM.visitor_id))).where(
+            and_(base, EventORM.event_type == EventType.BILLING_QUEUE_ABANDON.value)
+        )
+    )
+    converted = max(0, (join_q.scalar_one() or 0) - (abandon_q.scalar_one() or 0))
+    return round(converted / unique_visitors, 4)
 
 
 async def _get_avg_queue_depth(
@@ -92,8 +92,8 @@ async def _get_avg_queue_depth(
             )
         )
     )
-    val = result.scalar_one()  # pragma: no cover
-    return float(val) if val is not None else 0.0  # pragma: no cover
+    val = result.scalar_one()
+    return float(val) if val is not None else 0.0
 
 
 @router.get("/stores/{store_id}/anomalies", response_model=AnomaliesResponse)
@@ -105,7 +105,11 @@ async def get_anomalies(
     """
     Detect store anomalies in real time. Returns list (empty if no anomalies).
     """
-    now = datetime.now(timezone.utc)
+    from app.models import EventORM
+    max_ts_result = await db.execute(select(func.max(EventORM.timestamp)).where(EventORM.store_id == store_id))
+    max_ts = max_ts_result.scalar_one_or_none()
+    now = max_ts if max_ts else datetime.now(timezone.utc)
+
     today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     seven_days_ago = now - timedelta(days=7)
 
@@ -123,70 +127,73 @@ async def get_anomalies(
             )
         )
     )
-    current_queue = current_queue_result.scalar_one() or 0  # pragma: no cover
-  # pragma: no cover
-    avg_7d_queue = await _get_avg_queue_depth(db, store_id, seven_days_ago, today_start)  # pragma: no cover
-  # pragma: no cover
-    if avg_7d_queue > 0 and current_queue > QUEUE_SPIKE_MULTIPLIER * avg_7d_queue:  # pragma: no cover
-        severity = AnomalySeverity.CRITICAL if current_queue > 3 * avg_7d_queue else AnomalySeverity.WARN  # pragma: no cover
-        anomalies.append(  # pragma: no cover
-            AnomalyDetail(  # pragma: no cover
-                anomaly_type="BILLING_QUEUE_SPIKE",  # pragma: no cover
-                severity=severity,  # pragma: no cover
-                suggested_action=(  # pragma: no cover
-                    f"Open additional billing counters immediately. "  # pragma: no cover
-                    f"Current queue depth ({current_queue}) is "  # pragma: no cover
-                    f"{current_queue / max(avg_7d_queue, 1):.1f}× the 7-day average."  # pragma: no cover
-                ),  # pragma: no cover
-                timestamp=now,  # pragma: no cover
-                details={  # pragma: no cover
-                    "current_queue_depth": current_queue,  # pragma: no cover
-                    "avg_7d_queue_depth": round(avg_7d_queue, 2),  # pragma: no cover
-                    "spike_multiplier": round(current_queue / max(avg_7d_queue, 1), 2),  # pragma: no cover
-                },  # pragma: no cover
-            )  # pragma: no cover
-        )  # pragma: no cover
-    elif avg_7d_queue == 0 and current_queue > 5:  # pragma: no cover
-        anomalies.append(  # pragma: no cover
-            AnomalyDetail(  # pragma: no cover
-                anomaly_type="BILLING_QUEUE_SPIKE",  # pragma: no cover
-                severity=AnomalySeverity.WARN,  # pragma: no cover
-                suggested_action="Queue depth elevated with no historical baseline. Monitor closely.",  # pragma: no cover
-                timestamp=now,  # pragma: no cover
-                details={"current_queue_depth": current_queue, "avg_7d_queue_depth": 0},  # pragma: no cover
-            )  # pragma: no cover
-        )  # pragma: no cover
-  # pragma: no cover
-    # ── 2. CONVERSION_DROP ────────────────────────────────────────────────  # pragma: no cover
-    today_rate = await _get_conversion_rate(db, store_id, today_start, now)  # pragma: no cover
-    avg_7d_rate = await _get_conversion_rate(db, store_id, seven_days_ago, today_start)  # pragma: no cover
-  # pragma: no cover
-    if avg_7d_rate > 0 and today_rate < CONVERSION_DROP_THRESHOLD * avg_7d_rate:  # pragma: no cover
-        drop_pct = round((1 - today_rate / avg_7d_rate) * 100, 1)  # pragma: no cover
-        severity = AnomalySeverity.CRITICAL if drop_pct > 50 else AnomalySeverity.WARN  # pragma: no cover
-        anomalies.append(  # pragma: no cover
-            AnomalyDetail(  # pragma: no cover
-                anomaly_type="CONVERSION_DROP",  # pragma: no cover
-                severity=severity,  # pragma: no cover
-                suggested_action=(  # pragma: no cover
-                    f"Conversion rate dropped {drop_pct}% vs 7-day avg. "  # pragma: no cover
-                    "Review staffing, product availability, and pricing. "  # pragma: no cover
-                    "Check billing queue for friction points."  # pragma: no cover
-                ),  # pragma: no cover
-                timestamp=now,  # pragma: no cover
-                details={  # pragma: no cover
-                    "today_conversion_rate": today_rate,  # pragma: no cover
-                    "avg_7d_conversion_rate": avg_7d_rate,  # pragma: no cover
-                    "drop_pct": drop_pct,  # pragma: no cover
-                },  # pragma: no cover
-            )  # pragma: no cover
-        )  # pragma: no cover
-  # pragma: no cover
-    # ── 3. DEAD_ZONE ──────────────────────────────────────────────────────  # pragma: no cover
-    dead_zone_cutoff = now - timedelta(minutes=DEAD_ZONE_MINUTES)  # pragma: no cover
-  # pragma: no cover
-    # Find all zones that have ever been active in this store today  # pragma: no cover
-    all_zones_result = await db.execute(  # pragma: no cover
+    current_queue = current_queue_result.scalar_one() or 0
+
+    avg_7d_queue = await _get_avg_queue_depth(db, store_id, seven_days_ago, today_start)
+
+    if avg_7d_queue > 0 and current_queue > QUEUE_SPIKE_MULTIPLIER * avg_7d_queue:
+        severity = AnomalySeverity.CRITICAL if current_queue > 3 * avg_7d_queue else AnomalySeverity.WARN
+        anomalies.append(
+            AnomalyDetail(
+                anomaly_type="BILLING_QUEUE_SPIKE",
+                severity=severity,
+                suggested_action=(
+                    f"Open additional billing counters immediately. "
+                    f"Current queue depth ({current_queue}) is "
+                    f"{current_queue / max(avg_7d_queue, 1):.1f}× the 7-day average."
+                ),
+                timestamp=now,
+                details={
+                    "current_queue_depth": current_queue,
+                    "avg_7d_queue_depth": round(avg_7d_queue, 2),
+                    "spike_multiplier": round(current_queue / max(avg_7d_queue, 1), 2),
+                },
+            )
+        )
+    elif avg_7d_queue == 0 and current_queue > 5:
+        anomalies.append(
+            AnomalyDetail(
+                anomaly_type="BILLING_QUEUE_SPIKE",
+                severity=AnomalySeverity.WARN,
+                suggested_action="Queue depth elevated with no historical baseline. Monitor closely.",
+                timestamp=now,
+                details={"current_queue_depth": current_queue, "avg_7d_queue_depth": 0},
+            )
+        )
+
+    # ── 2. CONVERSION_DROP ────────────────────────────────────────────────
+    today_rate = await _get_conversion_rate(db, store_id, today_start, now)
+    avg_7d_rate = await _get_conversion_rate(db, store_id, seven_days_ago, today_start)
+
+    if avg_7d_rate > 0 and today_rate < CONVERSION_DROP_THRESHOLD * avg_7d_rate:
+        drop_pct = round((1 - today_rate / avg_7d_rate) * 100, 1)
+        severity = AnomalySeverity.CRITICAL if drop_pct > 50 else AnomalySeverity.WARN
+        anomalies.append(
+            AnomalyDetail(
+                anomaly_type="CONVERSION_DROP",
+                severity=severity,
+                suggested_action=(
+                    f"Conversion rate dropped {drop_pct}% vs 7-day avg. "
+                    "Review staffing, product availability, and pricing. "
+                    "Check billing queue for friction points."
+                ),
+                timestamp=now,
+                details={
+                    "today_conversion_rate": today_rate,
+                    "avg_7d_conversion_rate": avg_7d_rate,
+                    "drop_pct": drop_pct,
+                },
+            )
+        )
+
+    # ── 3. DEAD_ZONE ──────────────────────────────────────────────────────
+    # Use real wall-clock time for dead zone detection so "no activity in
+    # past 30 min" is measured against actual current time, not max_ts.
+    real_now = datetime.now(timezone.utc)
+    dead_zone_cutoff = real_now - timedelta(minutes=DEAD_ZONE_MINUTES)
+
+    # Find all zones that have ever been active in this store today
+    all_zones_result = await db.execute(
         select(func.distinct(EventORM.zone_id)).where(
             and_(
                 EventORM.store_id == store_id,
@@ -199,20 +206,20 @@ async def get_anomalies(
     all_zones = {row[0] for row in all_zones_result.fetchall() if row[0]}
 
     # Find zones with activity in the dead_zone_cutoff window
-    active_zones_result = await db.execute(  # pragma: no cover
-        select(func.distinct(EventORM.zone_id)).where(  # pragma: no cover
-            and_(  # pragma: no cover
-                EventORM.store_id == store_id,  # pragma: no cover
-                EventORM.timestamp >= dead_zone_cutoff,  # pragma: no cover
-                EventORM.event_type == EventType.ZONE_ENTER.value,  # pragma: no cover
-                EventORM.zone_id.isnot(None),  # pragma: no cover
-                EventORM.is_staff.is_(False),  # pragma: no cover
-            )  # pragma: no cover
-        )  # pragma: no cover
-    )  # pragma: no cover
-    active_zones = {row[0] for row in active_zones_result.fetchall() if row[0]}  # pragma: no cover
-  # pragma: no cover
-    dead_zones = all_zones - active_zones  # pragma: no cover
+    active_zones_result = await db.execute(
+        select(func.distinct(EventORM.zone_id)).where(
+            and_(
+                EventORM.store_id == store_id,
+                EventORM.timestamp >= dead_zone_cutoff,
+                EventORM.event_type == EventType.ZONE_ENTER.value,
+                EventORM.zone_id.isnot(None),
+                EventORM.is_staff.is_(False),
+            )
+        )
+    )
+    active_zones = {row[0] for row in active_zones_result.fetchall() if row[0]}
+
+    dead_zones = all_zones - active_zones
     if dead_zones:
         for dead_zone in sorted(dead_zones):
             anomalies.append(

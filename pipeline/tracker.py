@@ -45,7 +45,7 @@ from pipeline.emit import make_visitor_id
 
 REID_THRESHOLD: float = float(os.getenv("REID_SIMILARITY_THRESHOLD", "0.75"))
 REENTRY_WINDOW_MINUTES: int = int(os.getenv("REID_REENTRY_WINDOW_MINUTES", "30"))
-EMBEDDING_DIM: int = 512  # OSNet output dim
+EMBEDDING_DIM: int = 2048  # ResNet50 output dim
 
 
 # ---------------------------------------------------------------------------
@@ -54,47 +54,59 @@ EMBEDDING_DIM: int = 512  # OSNet output dim
 
 class OSNetExtractor:
     """
-    Extracts appearance embeddings using OSNet (torchreid).
-    Falls back to random embeddings if torchreid is unavailable.
+    Extracts appearance embeddings using ResNet50 (torchvision).
+    Falls back to random embeddings if torch is unavailable.
     """
 
     def __init__(self) -> None:
         self.model = None
         self.available = False
+        self.transform = None
 
-        if TORCHREID_AVAILABLE and TORCH_AVAILABLE:
+        if TORCH_AVAILABLE:
             try:
-                self.model = torchreid.models.build_model(
-                    name="osnet_x1_0",
-                    num_classes=1000,
-                    pretrained=True,
-                )
+                import torchvision.models as models
+                import torchvision.transforms as transforms
+                
+                # Load ResNet50 and remove the final classification layer to get 2048-dim features
+                resnet = models.resnet50(pretrained=True)
+                # Replace fc with Identity
+                resnet.fc = torch.nn.Identity()
+                self.model = resnet
                 self.model.eval()
+                
                 if torch.cuda.is_available():
                     self.model = self.model.cuda()
+                    
+                self.transform = transforms.Compose([
+                    transforms.ToPILImage(),
+                    transforms.Resize((256, 128)),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                ])
                 self.available = True
-                print("[INFO] OSNet Re-ID model loaded successfully")
+                print("[INFO] ResNet50 Re-ID model loaded successfully")
             except Exception as exc:
-                print(f"[WARN] OSNet load failed: {exc}. Using random embeddings.")
+                print(f"[WARN] ResNet50 load failed: {exc}. Using colour histograms.")
 
     def extract(self, crop: Optional[np.ndarray]) -> np.ndarray:
         """
-        Extract a 512-dim embedding from a BGR image crop.
+        Extract a 2048-dim embedding from a BGR image crop.
         Returns zero vector if crop is None or model unavailable.
-        Low confidence is NOT suppressed — it's passed through.
         """
         if crop is None or crop.size == 0:
             return np.zeros(EMBEDDING_DIM, dtype=np.float32)
 
-        if not self.available or self.model is None:
+        if not self.available or self.model is None or self.transform is None:
             # Fallback: use colour histogram as pseudo-embedding
             return self._colour_histogram(crop)
 
         try:
             import cv2
-
-            resized = cv2.resize(crop, (128, 256))
-            tensor = torch.from_numpy(resized.transpose(2, 0, 1)).float() / 255.0
+            # Convert BGR (OpenCV) to RGB (Torchvision expects RGB)
+            rgb_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+            
+            tensor = self.transform(rgb_crop)
             tensor = tensor.unsqueeze(0)  # batch dim
             if torch.cuda.is_available():
                 tensor = tensor.cuda()

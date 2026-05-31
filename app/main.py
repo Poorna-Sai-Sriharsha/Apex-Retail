@@ -1,193 +1,3 @@
-from __future__ import annotations
-from typing import Optional
-"""
-Structured JSON logging configuration using structlog.
-Every request emits: trace_id, store_id, endpoint, latency_ms, event_count, status_code.
-"""
-
-
-import logging
-import sys
-
-import structlog
-
-
-def configure_logging(log_level: str = "INFO") -> None:
-    """
-    Configure structlog for JSON output with consistent field names.
-    Called once at app startup.
-    """
-    shared_processors = [
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-    ]
-
-    structlog.configure(
-        processors=shared_processors
-        + [
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-        ],
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
-    )
-
-    formatter = structlog.stdlib.ProcessorFormatter(
-        processor=structlog.processors.JSONRenderer(),
-        foreign_pre_chain=shared_processors,
-    )
-
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(formatter)
-
-    root_logger = logging.getLogger()
-    root_logger.handlers = [handler]
-    root_logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
-
-    # Silence noisy third-party loggers
-    for noisy in ("uvicorn.access", "sqlalchemy.engine"):
-        logging.getLogger(noisy).setLevel(logging.WARNING)
-
-
-def get_logger(name: str) -> structlog.stdlib.BoundLogger:
-    """Return a bound structlog logger."""
-    return structlog.get_logger(name)
-
-"""
-GET /stores/{store_id}/heatmap — zone visit frequency and dwell heatmap.
-
-Returns per zone:
-- visit_frequency: total ZONE_ENTER events for this zone
-- avg_dwell_ms: mean dwell_ms from ZONE_DWELL events for this zone
-- normalised_score: 0–100 relative to busiest zone in this store/window
-
-data_confidence: LOW if total unique sessions < 20 in window.
-"""
-
-
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import and_, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import get_db
-from app.main import get_logger
-from app.metrics import _window_bounds
-from app.models import (
-    DataConfidence,
-    EventORM,
-    EventType,
-    HeatmapResponse,
-    ZoneHeatmap,
-)
-
-heatmap_router = APIRouter()
-logger = get_logger(__name__)
-
-
-@heatmap_router.get("/stores/{store_id}/heatmap", response_model=HeatmapResponse)
-async def get_heatmap(
-    store_id: str,
-    camera_id: Optional[str] = None,
-    window: str = Query("today", pattern="^(today|7d|30d)$"),
-    db: AsyncSession = Depends(get_db),
-) -> HeatmapResponse:
-    """
-    Zone visit heatmap with 0–100 normalised scores and data confidence flag.
-    Staff excluded. Empty zones return 0 values.
-    """
-    start, end = _window_bounds(window)
-
-    filters = [
-        EventORM.store_id == store_id,
-        EventORM.timestamp >= start,
-        EventORM.timestamp <= end,
-        EventORM.is_staff.is_(False),
-    ]
-    if camera_id and camera_id != "ALL":
-        filters.append(EventORM.camera_id == camera_id)
-        
-    base_filter = and_(*filters)
-
-    # Session count for confidence check
-    session_result = await db.execute(
-        select(func.count(func.distinct(EventORM.visitor_id))).where(
-            and_(
-                base_filter,
-                EventORM.event_type.in_(
-                    [EventType.ENTRY.value, EventType.REENTRY.value]
-                ),
-            )
-        )
-    )
-    session_count: int = session_result.scalar_one() or 0
-    confidence = DataConfidence.LOW if session_count < 20 else DataConfidence.OK
-
-    # Zone visit frequency (ZONE_ENTER count per zone)
-    freq_result = await db.execute(
-        select(EventORM.zone_id, func.count(EventORM.id))
-        .where(
-            and_(
-                base_filter,
-                EventORM.event_type == EventType.ZONE_ENTER.value,
-                EventORM.zone_id.isnot(None),
-            )
-        )
-        .group_by(EventORM.zone_id)
-    )
-    freq_map: dict[str, int] = {row[0]: row[1] for row in freq_result.fetchall() if row[0]}
-
-    # Avg dwell per zone (ZONE_DWELL avg dwell_ms)
-    dwell_result = await db.execute(
-        select(EventORM.zone_id, func.avg(EventORM.dwell_ms))
-        .where(
-            and_(
-                base_filter,
-                EventORM.event_type == EventType.ZONE_DWELL.value,
-                EventORM.zone_id.isnot(None),
-            )
-        )
-        .group_by(EventORM.zone_id)
-    )
-    dwell_map: dict[str, float] = {
-        row[0]: float(row[1]) for row in dwell_result.fetchall() if row[0]
-    }
-
-    all_zones = set(freq_map) | set(dwell_map)  # pragma: no cover
-    max_freq = max(freq_map.values(), default=1)  # avoid /0  # pragma: no cover
-  # pragma: no cover
-    zones: list[ZoneHeatmap] = []  # pragma: no cover
-    for zone_id in sorted(all_zones):  # pragma: no cover
-        freq = freq_map.get(zone_id, 0)  # pragma: no cover
-        avg_dwell = dwell_map.get(zone_id, 0.0)  # pragma: no cover
-        normalised = round((freq / max_freq) * 100, 2) if max_freq > 0 else 0.0  # pragma: no cover
-        zones.append(  # pragma: no cover
-            ZoneHeatmap(  # pragma: no cover
-                zone_id=zone_id,  # pragma: no cover
-                visit_frequency=freq,  # pragma: no cover
-                avg_dwell_ms=round(avg_dwell, 2),  # pragma: no cover
-                normalised_score=normalised,  # pragma: no cover
-            )  # pragma: no cover
-        )  # pragma: no cover
-  # pragma: no cover
-    logger.info(  # pragma: no cover
-        "heatmap_computed",  # pragma: no cover
-        store_id=store_id,  # pragma: no cover
-        window=window,  # pragma: no cover
-        zone_count=len(zones),  # pragma: no cover
-        session_count=session_count,  # pragma: no cover
-        confidence=confidence.value,  # pragma: no cover
-    )  # pragma: no cover
-  # pragma: no cover
-    return HeatmapResponse(  # pragma: no cover
-        store_id=store_id,
-        window=window,
-        data_confidence=confidence,
-        zones=zones,
-    )
-
 """
 FastAPI application entrypoint.
 
@@ -200,6 +10,7 @@ Features:
 - Error handlers: 503 on DB failure, never raw stack traces
 """
 
+from __future__ import annotations
 
 import asyncio
 import os
@@ -215,18 +26,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy.exc import OperationalError
 
+from app.logging_config import configure_logging, get_logger
 from app.anomalies import router as anomalies_router
-from app.models import init_db
+from app.config_api import router as config_router
 from app.funnel import router as funnel_router
+from app.heatmap import router as heatmap_router
 from app.health import router as health_router
 from app.ingestion import router as ingest_router
 from app.metrics import router as metrics_router
+from app.models import init_db
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 configure_logging(LOG_LEVEL)
 logger = get_logger(__name__)
 
-# WebSocket connection manager
+
+# ── WebSocket connection manager ───────────────────────────────────────────
 class ConnectionManager:
     def __init__(self) -> None:
         # store_id → set of active WebSocket connections
@@ -240,19 +55,20 @@ class ConnectionManager:
         self._connections.get(store_id, set()).discard(ws)
 
     async def broadcast(self, store_id: str, message: dict) -> None:
-        dead: list[WebSocket] = []  # pragma: no cover
-        for ws in list(self._connections.get(store_id, set())):  # pragma: no cover
-            try:  # pragma: no cover
-                await ws.send_json(message)  # pragma: no cover
-            except Exception:  # pragma: no cover
-                dead.append(ws)  # pragma: no cover
-        for ws in dead:  # pragma: no cover
-            self.disconnect(store_id, ws)  # pragma: no cover
+        dead: list[WebSocket] = []
+        for ws in list(self._connections.get(store_id, set())):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                dead.append(ws)
+        for ws in dead:
+            self.disconnect(store_id, ws)
 
 
 manager = ConnectionManager()
 
 
+# ── Lifespan ───────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Startup: initialise DB. Shutdown: nothing special needed."""
@@ -285,9 +101,10 @@ app.add_middleware(
 app.include_router(ingest_router, tags=["Ingestion"])
 app.include_router(metrics_router, tags=["Metrics"])
 app.include_router(funnel_router, tags=["Funnel"])
+app.include_router(heatmap_router, tags=["Heatmap"])
 app.include_router(anomalies_router, tags=["Anomalies"])
 app.include_router(health_router, tags=["Health"])
-app.include_router(heatmap_router, tags=['Heatmap'])
+app.include_router(config_router, tags=["Config"])
 
 
 # ── Middleware: trace_id + latency + structured logging ────────────────────
@@ -364,16 +181,16 @@ async def websocket_live(ws: WebSocket, store_id: str) -> None:
     Clients subscribe and receive metric updates every time events are ingested.
     Also sends a heartbeat ping every 5s to keep the connection alive.
     """
-    await manager.connect(store_id, ws)  # pragma: no cover
-    logger.info("ws_connect", store_id=store_id)  # pragma: no cover
-    try:  # pragma: no cover
-        while True:  # pragma: no cover
-            # Keep connection alive — clients can also send pings  # pragma: no cover
-            await asyncio.sleep(5)  # pragma: no cover
-            await ws.send_json({"type": "heartbeat", "store_id": store_id})  # pragma: no cover
-    except WebSocketDisconnect:  # pragma: no cover
-        manager.disconnect(store_id, ws)  # pragma: no cover
-        logger.info("ws_disconnect", store_id=store_id)  # pragma: no cover
+    await manager.connect(store_id, ws)
+    logger.info("ws_connect", store_id=store_id)
+    try:
+        while True:
+            # Keep connection alive — clients can also send pings
+            await asyncio.sleep(5)
+            await ws.send_json({"type": "heartbeat", "store_id": store_id})
+    except WebSocketDisconnect:
+        manager.disconnect(store_id, ws)
+        logger.info("ws_disconnect", store_id=store_id)
 
 
 @app.get("/dashboard/{store_id}", response_class=HTMLResponse)
@@ -385,13 +202,7 @@ async def get_dashboard(store_id: str) -> HTMLResponse:
     return HTMLResponse(content="<h1>Dashboard missing</h1>", status_code=404)
 
 
-
 # ── Ingest hook: broadcast to WebSocket subscribers ───────────────────────
-# Monkey-patch the ingest endpoint to broadcast after successful ingest.
-# This is done via a post-ingest hook rather than modifying ingestion.py.
-original_ingest = ingest_router.routes[0].endpoint if ingest_router.routes else None
-
-
 async def _broadcast_after_ingest(store_id: str, metrics_summary: dict) -> None:
     """Called after a successful ingest to notify WebSocket subscribers."""
     await manager.broadcast(store_id, {"type": "metrics_update", **metrics_summary})

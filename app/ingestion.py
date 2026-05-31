@@ -21,7 +21,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import get_db
-from app.main import get_logger
+from app.logging_config import get_logger
 from app.models import (
     EventORM,
     EventSchema,

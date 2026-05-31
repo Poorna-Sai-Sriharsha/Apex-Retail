@@ -475,15 +475,15 @@ body {
                 <h1>Apex Retail</h1>
             </div>
             <nav>
-                <div class="nav-item active">
+                <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                     Live Dashboard
                 </div>
-                <div class="nav-item">
+                <div class="nav-item" id="nav-config" onclick="switchTab('config')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
                     Store Configuration
                 </div>
-                <div class="nav-item">
+                <div class="nav-item" id="nav-settings" onclick="switchTab('settings')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     Settings
                 </div>
@@ -498,110 +498,504 @@ body {
 
         <!-- Main Content Area -->
         <main class="dashboard-content">
-            <header class="topbar">
-                <div class="page-title">
-                    <h2>Store Intelligence Overview</h2>
-                    <p class="subtitle">Live insights powered by Edge Computer Vision</p>
-                </div>
-                <div class="status-indicator">
-                    <div class="pulse-dot"></div>
-                    <span id="system-status">System Healthy</span>
-                    <span class="last-updated" id="last-updated">Last update: --:--:--</span>
-                </div>
-            </header>
+            <!-- View: Dashboard -->
+            <div id="view-dashboard" class="view-panel active">
+                <header class="topbar">
+                    <div class="page-title">
+                        <h2>Store Intelligence Overview</h2>
+                        <p class="subtitle">Live insights powered by Edge Computer Vision</p>
+                    </div>
+                    <div class="status-indicator">
+                        <div class="pulse-dot"></div>
+                        <span id="system-status">System Healthy</span>
+                        <span class="last-updated" id="last-updated">Last update: --:--:--</span>
+                    </div>
+                </header>
 
-            <!-- Metrics Grid -->
-            <section class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <h3>Unique Visitors</h3>
-                        <div class="metric-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <!-- Metrics Grid -->
+                <section class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>Unique Visitors</h3>
+                            <div class="metric-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            </div>
+                        </div>
+                        <div class="metric-value" id="val-visitors">--</div>
+                        <div class="metric-trend positive"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg> Today's Window</div>
+                    </div>
+
+                    <div class="metric-card highlight">
+                        <div class="metric-header">
+                            <h3>Conversion Rate</h3>
+                            <div class="metric-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                            </div>
+                        </div>
+                        <div class="metric-value" id="val-conversion">--%</div>
+                        <div class="metric-trend positive"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg> Visitors → Purchases</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>Billing Queue Depth</h3>
+                            <div class="metric-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            </div>
+                        </div>
+                        <div class="metric-value" id="val-queue">--</div>
+                        <div class="metric-trend negative" id="queue-trend">Max line depth</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>Abandonment Rate</h3>
+                            <div class="metric-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            </div>
+                        </div>
+                        <div class="metric-value" id="val-abandon">--%</div>
+                        <div class="metric-trend negative">Left queue without purchase</div>
+                    </div>
+                </section>
+
+                <!-- Main Content Split -->
+                <div class="dashboard-split">
+                    <!-- Left Column -->
+                    <div class="col-main">
+                        <!-- Funnel Section -->
+                        <section class="panel">
+                            <div class="panel-header">
+                                <h3>Conversion Funnel</h3>
+                            </div>
+                            <div class="funnel-container" id="funnel-stages">
+                                <!-- Populated via JS -->
+                                <div class="funnel-skeleton">Awaiting Data...</div>
+                            </div>
+                        </section>
+
+                        <!-- Heatmap Section -->
+                        <section class="panel">
+                            <div class="panel-header">
+                                <h3>Zone Engagement Heatmap</h3>
+                                <span class="badge" id="heatmap-confidence">CONFIDENCE: --</span>
+                            </div>
+                            <div class="heatmap-container" id="heatmap-zones">
+                                <!-- Populated via JS -->
+                                <div class="funnel-skeleton">Awaiting Data...</div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="col-side">
+                        <!-- Anomalies Section -->
+                        <section class="panel anomalies-panel">
+                            <div class="panel-header">
+                                <h3>Real-time Anomalies</h3>
+                            </div>
+                            <div class="anomalies-list" id="anomalies-list">
+                                <!-- Populated via JS -->
+                                <div class="funnel-skeleton">No Anomalies Detected</div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div> <!-- End View: Dashboard -->
+
+            <!-- View: Config -->
+            <div id="view-config" class="view-panel" style="display:none;">
+                <div class="topbar" style="margin-bottom: 24px;">
+                    <div class="page-title">
+                        <h2>Visual Store Configuration</h2>
+                        <div class="subtitle">Draw detection zones directly onto the camera feed</div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 24px;">
+                    <!-- Canvas Area -->
+                    <div style="flex: 1;">
+                        <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 12px;">
+                            <div>
+                                <label for="config-cam-select" style="color:var(--text-muted);font-size:0.9rem;">Camera:</label>
+                                <select id="config-cam-select" onchange="loadConfigEditor()" style="background:var(--bg-glass);color:#fff;border:1px solid var(--border-subtle);padding:8px;border-radius:4px;margin-left:8px;"></select>
+                            </div>
+                            <div>
+                                <button id="btn-draw-zone" onclick="startDrawingZone()" style="background:var(--accent-glow);color:var(--accent-primary);border:1px solid var(--accent-primary);padding:8px 16px;border-radius:8px;font-weight:600;cursor:pointer;">+ Draw New Zone</button>
+                            </div>
+                        </div>
+                        <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #111; border: 2px solid var(--border-subtle); border-radius: 8px; overflow: hidden; background-image: linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px); background-size: 40px 40px;">
+                            <canvas id="zone-canvas" width="1920" height="1080" style="width: 100%; height: 100%; cursor: crosshair;"></canvas>
+                        </div>
+                        <div style="margin-top: 8px; color: var(--text-muted); font-size: 0.85rem; display: flex; justify-content: space-between;">
+                            <span id="canvas-status">Select a camera to view zones.</span>
+                            <span>Resolution: 1920x1080</span>
                         </div>
                     </div>
-                    <div class="metric-value" id="val-visitors">--</div>
-                    <div class="metric-trend positive"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg> Today's Window</div>
-                </div>
 
-                <div class="metric-card highlight">
-                    <div class="metric-header">
-                        <h3>Conversion Rate</h3>
-                        <div class="metric-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    <!-- Right Sidebar -->
+                    <div style="width: 350px; display: flex; flex-direction: column; gap: 16px;">
+                        <div class="panel" style="padding: 16px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Defined Zones</h3>
+                            <div id="zone-list" style="display: flex; flex-direction: column; gap: 8px;">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Active Zone Editor -->
+                        <div class="panel" id="zone-editor-panel" style="padding: 16px; display: none; border-color: var(--accent-primary);">
+                            <h3 style="margin-bottom: 12px; font-size: 1.1rem;" id="editor-title">Edit Zone</h3>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div>
+                                    <label style="color:var(--text-muted);font-size:0.85rem;display:block;margin-bottom:4px;">Zone ID</label>
+                                    <input type="text" id="edit-zone-id" style="width:100%;background:var(--bg-dark);color:#fff;border:1px solid var(--border-subtle);padding:8px;border-radius:4px;" placeholder="e.g. MENSWEAR">
+                                </div>
+                                <div>
+                                    <label style="color:var(--text-muted);font-size:0.85rem;display:block;margin-bottom:4px;">Description</label>
+                                    <input type="text" id="edit-zone-desc" style="width:100%;background:var(--bg-dark);color:#fff;border:1px solid var(--border-subtle);padding:8px;border-radius:4px;">
+                                </div>
+                                <div>
+                                    <label style="color:var(--text-muted);font-size:0.85rem;display:block;margin-bottom:4px;">Coordinates</label>
+                                    <textarea id="edit-zone-coords" style="width:100%;height:80px;background:var(--bg-dark);color:#aaa;border:1px solid var(--border-subtle);padding:8px;border-radius:4px;font-family:monospace;" readonly></textarea>
+                                </div>
+                                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                    <button onclick="commitZoneEdit()" style="flex:1;background:var(--accent-primary);color:#fff;border:none;padding:8px;border-radius:4px;font-weight:600;cursor:pointer;">Apply</button>
+                                    <button onclick="cancelZoneEdit()" style="flex:1;background:transparent;color:var(--text-main);border:1px solid var(--border-subtle);padding:8px;border-radius:4px;font-weight:600;cursor:pointer;">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+                            <button onclick="saveConfig()" style="width: 100%; background:var(--accent-primary);color:#fff;border:none;padding:12px;border-radius:8px;font-weight:600;cursor:pointer; font-size: 1.05rem;">Save Configuration</button>
+                            <div id="config-status" style="text-align: center; margin-top: 8px; font-size: 0.9rem;"></div>
                         </div>
                     </div>
-                    <div class="metric-value" id="val-conversion">--%</div>
-                    <div class="metric-trend positive"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg> Visitors → Purchases</div>
                 </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <h3>Billing Queue Depth</h3>
-                        <div class="metric-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        </div>
+            </div> <!-- End View: Config -->
+            
+            <!-- View: Settings -->
+            <div id="view-settings" class="view-panel" style="display:none;">
+                <div class="topbar">
+                    <div class="page-title">
+                        <h2>Settings</h2>
+                        <div class="subtitle">Platform configuration</div>
                     </div>
-                    <div class="metric-value" id="val-queue">--</div>
-                    <div class="metric-trend negative" id="queue-trend">Max line depth</div>
                 </div>
-
-                <div class="metric-card">
-                    <div class="metric-header">
-                        <h3>Abandonment Rate</h3>
-                        <div class="metric-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                        </div>
-                    </div>
-                    <div class="metric-value" id="val-abandon">--%</div>
-                    <div class="metric-trend negative">Left queue without purchase</div>
+                <div style="margin-top:24px; color:var(--text-muted);">
+                    Settings module is not fully implemented in this demo instance.
                 </div>
-            </section>
-
-            <!-- Main Content Split -->
-            <div class="dashboard-split">
-                <!-- Left Column -->
-                <div class="col-main">
-                    <!-- Funnel Section -->
-                    <section class="panel">
-                        <div class="panel-header">
-                            <h3>Conversion Funnel</h3>
-                        </div>
-                        <div class="funnel-container" id="funnel-stages">
-                            <!-- Populated via JS -->
-                            <div class="funnel-skeleton">Awaiting Data...</div>
-                        </div>
-                    </section>
-
-                    <!-- Heatmap Section -->
-                    <section class="panel">
-                        <div class="panel-header">
-                            <h3>Zone Engagement Heatmap</h3>
-                            <span class="badge" id="heatmap-confidence">CONFIDENCE: --</span>
-                        </div>
-                        <div class="heatmap-container" id="heatmap-zones">
-                            <!-- Populated via JS -->
-                            <div class="funnel-skeleton">Awaiting Data...</div>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- Right Column -->
-                <div class="col-side">
-                    <!-- Anomalies Section -->
-                    <section class="panel anomalies-panel">
-                        <div class="panel-header">
-                            <h3>Real-time Anomalies</h3>
-                        </div>
-                        <div class="anomalies-list" id="anomalies-list">
-                            <!-- Populated via JS -->
-                            <div class="funnel-skeleton">No Anomalies Detected</div>
-                        </div>
-                    </section>
-                </div>
-            </div>
+            </div> <!-- End View: Settings -->
         </main>
     </div>
     <script>
+    let currentStore = 'STORE_BLR_001';
+    let currentCamera = 'ALL';
+    let layoutConfigData = {};
+      
+    function switchTab(tabId) {
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.view-panel').forEach(el => el.style.display = 'none');
+        
+        document.getElementById('nav-' + tabId).classList.add('active');
+        document.getElementById('view-' + tabId).style.display = 'block';
+        
+        if (tabId === 'config') {
+            fetchStoreConfig();
+        }
+    }
+      
+    async function fetchStoreConfig() {
+        try {
+            const res = await fetch(`/stores/${currentStore}/config`);
+            if (!res.ok) return;
+            const data = await res.json();
+            layoutConfigData = data.layouts || {};
+            
+            const select = document.getElementById('config-cam-select');
+            select.innerHTML = '';
+            for (const camId in layoutConfigData) {
+                const opt = document.createElement('option');
+                opt.value = camId;
+                opt.textContent = camId;
+                select.appendChild(opt);
+            }
+            loadConfigEditor();
+        } catch(e) {
+            console.error(e);
+        }
+    }
+      
+    let canvas, ctx;
+    let drawingState = 0;
+    let newPolygon = [];
+    let activeEditZone = null;
+    let cameraZones = [];
+    let cameraEntryLine = null;
+    let currentCamId = null;
+
+    function initCanvas() {
+        canvas = document.getElementById('zone-canvas');
+        if (!canvas) return;
+        ctx = canvas.getContext('2d');
+        canvas.addEventListener('mousedown', onCanvasClick);
+    }
+      
+    function loadConfigEditor() {
+        if (!canvas) initCanvas();
+        const select = document.getElementById('config-cam-select');
+        currentCamId = select.value;
+        const data = layoutConfigData[currentCamId];
+        cameraZones = [];
+        cameraEntryLine = null;
+        if (data && data.zones) {
+            cameraZones = JSON.parse(JSON.stringify(data.zones));
+        }
+        if (data && data.entry_line) {
+            cameraEntryLine = JSON.parse(JSON.stringify(data.entry_line));
+        }
+        
+        drawingState = 0;
+        newPolygon = [];
+        activeEditZone = null;
+        document.getElementById('zone-editor-panel').style.display = 'none';
+        
+        renderZoneList();
+        drawCanvas();
+    }
+
+    function renderZoneList() {
+        const list = document.getElementById('zone-list');
+        list.innerHTML = '';
+        
+        if (cameraEntryLine) {
+            const item = document.createElement('div');
+            item.style.padding = '8px 12px';
+            item.style.background = 'rgba(255, 51, 102, 0.1)';
+            item.style.border = '1px dashed #ff3366';
+            item.style.borderRadius = '4px';
+            item.style.marginBottom = '8px';
+            item.innerHTML = `<span style="font-weight:600;color:#ff3366">ENTRY LINE</span>
+                              <div style="font-size:0.8rem;color:var(--text-muted)">Axis: ${cameraEntryLine.axis}, ${cameraEntryLine.axis === 'horizontal' ? 'Y=' + cameraEntryLine.y : 'X=' + cameraEntryLine.x}<br/>Direction: ${cameraEntryLine.direction} = ENTRY</div>`;
+            list.appendChild(item);
+        }
+
+        if (cameraZones.length === 0 && !cameraEntryLine) {
+            list.innerHTML = '<div style="color:var(--text-muted);font-size:0.9rem;">No zones defined for this camera.</div>';
+            return;
+        }
+        
+        cameraZones.forEach((z, idx) => {
+            const item = document.createElement('div');
+            item.style.padding = '8px 12px';
+            item.style.background = 'var(--bg-dark)';
+            item.style.border = '1px solid var(--border-subtle)';
+            item.style.borderRadius = '4px';
+            item.style.cursor = 'pointer';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            item.innerHTML = `<span style="font-weight:600;color:var(--accent-primary)">${z.zone_id}</span>
+                              <button style="background:transparent;border:none;color:var(--status-crit);cursor:pointer;" onclick="deleteZone(${idx}); event.stopPropagation();">X</button>`;
+            item.onclick = () => editZone(idx);
+            list.appendChild(item);
+        });
+    }
+
+    function drawCanvas() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw Entry Line
+        if (cameraEntryLine) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff3366';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([10, 10]);
+            
+            if (cameraEntryLine.axis === 'horizontal') {
+                ctx.moveTo(0, cameraEntryLine.y);
+                ctx.lineTo(canvas.width, cameraEntryLine.y);
+                ctx.stroke();
+                
+                // Draw Direction Arrow
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#ff3366';
+                ctx.beginPath();
+                ctx.moveTo(canvas.width/2, cameraEntryLine.y);
+                if (cameraEntryLine.direction === 'top_to_bottom') {
+                    ctx.lineTo(canvas.width/2 - 15, cameraEntryLine.y - 20);
+                    ctx.lineTo(canvas.width/2 + 15, cameraEntryLine.y - 20);
+                } else {
+                    ctx.lineTo(canvas.width/2 - 15, cameraEntryLine.y + 20);
+                    ctx.lineTo(canvas.width/2 + 15, cameraEntryLine.y + 20);
+                }
+                ctx.fill();
+                ctx.font = '24px sans-serif';
+                ctx.fillText('ENTRY LINE', 20, cameraEntryLine.y - 15);
+            } else {
+                ctx.moveTo(cameraEntryLine.x, 0);
+                ctx.lineTo(cameraEntryLine.x, canvas.height);
+                ctx.stroke();
+                
+                // Draw Direction Arrow
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#ff3366';
+                ctx.beginPath();
+                ctx.moveTo(cameraEntryLine.x, canvas.height/2);
+                if (cameraEntryLine.direction === 'left_to_right') {
+                    ctx.lineTo(cameraEntryLine.x - 20, canvas.height/2 - 15);
+                    ctx.lineTo(cameraEntryLine.x - 20, canvas.height/2 + 15);
+                } else {
+                    ctx.lineTo(cameraEntryLine.x + 20, canvas.height/2 - 15);
+                    ctx.lineTo(cameraEntryLine.x + 20, canvas.height/2 + 15);
+                }
+                ctx.fill();
+                ctx.font = '24px sans-serif';
+                ctx.fillText('ENTRY LINE', cameraEntryLine.x + 15, 40);
+            }
+            ctx.setLineDash([]);
+        }
+
+        // Draw existing
+        cameraZones.forEach(z => {
+            if (z.polygon && z.polygon.length > 0) {
+                drawPoly(z.polygon, 'rgba(82, 200, 159, 0.4)', 'rgba(82, 200, 159, 1)');
+                // Draw label
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px sans-serif';
+                ctx.fillText(z.zone_id, z.polygon[0][0] + 10, z.polygon[0][1] + 30);
+            }
+        });
+
+        // Draw new
+        if (newPolygon.length > 0) {
+            drawPoly(newPolygon, 'rgba(255, 255, 255, 0.2)', '#fff', false);
+            // Draw points
+            ctx.fillStyle = '#fff';
+            newPolygon.forEach(pt => {
+                ctx.beginPath();
+                ctx.arc(pt[0], pt[1], 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+    }
+
+    function drawPoly(pts, fill, stroke, close=true) {
+        if (pts.length === 0) return;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i=1; i<pts.length; i++) {
+            ctx.lineTo(pts[i][0], pts[i][1]);
+        }
+        if (close && pts.length > 2) ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    function onCanvasClick(e) {
+        if (drawingState === 0) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const x = Math.round((e.clientX - rect.left) * scaleX);
+        const y = Math.round((e.clientY - rect.top) * scaleY);
+
+        newPolygon.push([x, y]);
+        if (newPolygon.length === 4) {
+            drawingState = 0;
+            document.getElementById('canvas-status').textContent = 'Zone drawn. Fill out details to save.';
+            document.getElementById('btn-draw-zone').textContent = '+ Draw New Zone';
+            
+            // Open editor for new zone
+            activeEditZone = { zone_id: 'NEW_ZONE', description: '', polygon: newPolygon, cameras: [currentCamId] };
+            openEditor();
+        }
+        drawCanvas();
+    }
+
+    function startDrawingZone() {
+        drawingState = 1;
+        newPolygon = [];
+        activeEditZone = null;
+        document.getElementById('zone-editor-panel').style.display = 'none';
+        document.getElementById('btn-draw-zone').textContent = 'Click 4 points...';
+        document.getElementById('canvas-status').textContent = 'Click on the canvas to place 4 corners of the zone.';
+        drawCanvas();
+    }
+
+    function deleteZone(idx) {
+        cameraZones.splice(idx, 1);
+        renderZoneList();
+        drawCanvas();
+        document.getElementById('zone-editor-panel').style.display = 'none';
+    }
+
+    function editZone(idx) {
+        activeEditZone = cameraZones[idx];
+        openEditor();
+    }
+
+    function openEditor() {
+        if (!activeEditZone) return;
+        document.getElementById('zone-editor-panel').style.display = 'block';
+        document.getElementById('edit-zone-id').value = activeEditZone.zone_id || '';
+        document.getElementById('edit-zone-desc').value = activeEditZone.description || '';
+        document.getElementById('edit-zone-coords').value = JSON.stringify(activeEditZone.polygon);
+    }
+
+    function cancelZoneEdit() {
+        document.getElementById('zone-editor-panel').style.display = 'none';
+        activeEditZone = null;
+        newPolygon = [];
+        drawCanvas();
+    }
+
+    function commitZoneEdit() {
+        if (!activeEditZone) return;
+        activeEditZone.zone_id = document.getElementById('edit-zone-id').value;
+        activeEditZone.description = document.getElementById('edit-zone-desc').value;
+        try {
+            activeEditZone.polygon = JSON.parse(document.getElementById('edit-zone-coords').value);
+        } catch(e) {}
+        
+        // If it's a new zone (not in cameraZones array)
+        if (newPolygon.length === 4) {
+            cameraZones.push(activeEditZone);
+        }
+        
+        activeEditZone = null;
+        newPolygon = [];
+        document.getElementById('zone-editor-panel').style.display = 'none';
+        renderZoneList();
+        drawCanvas();
+    }
+      
+    async function saveConfig() {
+        if (!currentCamId) return;
+        const data = layoutConfigData[currentCamId];
+        data.zones = cameraZones;
+        
+        try {
+            const res = await fetch(`/stores/${currentStore}/config`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({camera_id: currentCamId, data: data})
+            });
+            if (res.ok) {
+                document.getElementById('config-status').textContent = 'Saved successfully!';
+                document.getElementById('config-status').style.color = 'var(--status-good)';
+            } else {
+                document.getElementById('config-status').textContent = 'Save failed.';
+                document.getElementById('config-status').style.color = 'var(--status-crit)';
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
 document.addEventListener('DOMContentLoaded', () => {
     // We only have one unified store now
     const currentStore = "APEX_RETAIL";

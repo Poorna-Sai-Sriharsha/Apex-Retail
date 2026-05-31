@@ -161,13 +161,13 @@ class TestMetricsAllStaffStore:
 
 class TestMetricsMultiStore:
     async def test_different_stores_isolated(self, client):
-        """Events for STORE_BLR_001 must not affect STORE_BLR_002 metrics."""
-        events_002 = make_session_events(store_id="STORE_BLR_002")
+        """Events for STORE_BLR_001 must not affect ST1008 metrics."""
+        events_002 = make_session_events(store_id="ST1008")
         events_001 = make_session_events(store_id="STORE_BLR_001")
 
         await client.post("/events/ingest", json={"events": events_002 + events_001})
 
-        resp_002 = await client.get("/stores/STORE_BLR_002/metrics")
+        resp_002 = await client.get("/stores/ST1008/metrics")
         resp_999 = await client.get("/stores/STORE_BLR_999/metrics")  # Non-existent
 
         assert resp_002.json()["unique_visitors"] == 1

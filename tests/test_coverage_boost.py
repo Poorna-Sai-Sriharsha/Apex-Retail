@@ -90,7 +90,7 @@ async def test_metrics_full_path(client: AsyncClient, setup_metrics_data):
 
     """Hits avg_dwell_by_zone, abandonment_rate, queue_depth, unique_visitors"""
 
-    response = await client.get("/stores/STORE_BLR_002/metrics?window=today")
+    response = await client.get("/stores/ST1008/metrics?window=today")
 
     assert response.status_code == 200
 
@@ -138,7 +138,7 @@ async def test_metrics_7d_window(client: AsyncClient, setup_metrics_data):
 
     """Hits the 7d window path in metrics"""
 
-    response = await client.get("/stores/STORE_BLR_002/metrics?window=7d")
+    response = await client.get("/stores/ST1008/metrics?window=7d")
 
     assert response.status_code == 200
 
@@ -200,7 +200,7 @@ async def test_conversion_drop_anomaly(client: AsyncClient, setup_anomaly_data):
 
     """Trigger CONVERSION_DROP logic in anomalies.py"""
 
-    response = await client.get("/stores/STORE_BLR_002/anomalies")
+    response = await client.get("/stores/ST1008/anomalies")
 
     assert response.status_code == 200
 
@@ -224,7 +224,7 @@ async def test_dead_zone_anomaly(client: AsyncClient, setup_anomaly_data):
 
     # But wait, DEAD_ZONE triggers if ANY mapped zone has 0 visits. We just need to hit the endpoint.
 
-    response = await client.get("/stores/STORE_BLR_002/anomalies")
+    response = await client.get("/stores/ST1008/anomalies")
 
     assert response.status_code == 200
 
@@ -248,7 +248,7 @@ async def test_funnel_with_dropoff(client: AsyncClient, setup_metrics_data):
 
     """Hit funnel paths with actual dropoff pct calculation between non-zero stages"""
 
-    response = await client.get("/stores/STORE_BLR_002/funnel")
+    response = await client.get("/stores/ST1008/funnel")
 
     assert response.status_code == 200
 
@@ -310,7 +310,7 @@ async def test_health_with_stale_feed(client: AsyncClient, db: AsyncSession):
 
     
 
-    store_status = next(s for s in data["stores"] if s["store_id"] == "STORE_BLR_002")
+    store_status = next(s for s in data["stores"] if s["store_id"] == "ST1008")
 
     assert store_status["stale_feed"] is True
 
@@ -376,7 +376,7 @@ def test_websocket_coverage():
     from app.main import app
     client = TestClient(app)
     try:
-        with client.websocket_connect('/dashboard/STORE_BLR_002') as websocket:
+        with client.websocket_connect('/dashboard/ST1008') as websocket:
             pass
     except WebSocketDisconnect:
         pass
@@ -385,3 +385,96 @@ def test_websocket_coverage():
             pass
     except WebSocketDisconnect:
         pass
+
+import numpy as np
+from pipeline.staff_classifier import ColourClassifier, StaffClassifier, MovementClassifier
+from pipeline.tracker import OSNetExtractor, ReIDTracker
+
+def test_staff_classifier_full():
+    # Colour Classifier
+    clf = ColourClassifier(hue_low=100, hue_high=130)
+    crop = np.zeros((100, 100, 3), dtype=np.uint8)
+    crop[:, :] = [255, 0, 0] # Blue in BGR (hue ~ 120 in opencv)
+    is_staff, conf = clf.is_staff_colour(crop)
+    
+    crop2 = np.zeros((100, 100, 3), dtype=np.uint8)
+    crop2[:, :] = [0, 0, 255] # Red in BGR (hue 0)
+    is_staff2, conf2 = clf.is_staff_colour(crop2)
+    
+    # Movement Classifier
+    m_clf = MovementClassifier()
+    for z in ["Z1", "Z2", "Z3", "Z4", "Z5", "Z6"]:
+        m_clf.record_zone_visit("v1", z)
+    for _ in range(5):
+        m_clf.record_zone_visit("v1", "Z6")
+    is_st, cnf = m_clf.is_staff_movement("v1")
+    m_clf.reset("v1")
+    
+    # Ensemble
+    ensemble = StaffClassifier()
+    ensemble.update_colour("v2", crop)
+    ensemble.update_colour("v3", crop2)
+    ensemble.update_movement("v3", "Z1")
+    for z in ["Z1", "Z2", "Z3", "Z4"]:
+        ensemble.update_movement("v4", z)
+    for _ in range(7):
+        ensemble.update_movement("v4", "Z4")
+        
+    assert ensemble.is_staff("v4")
+    assert ensemble.get_confidence("v4") > 0.0
+    ensemble.reset("v4")
+    assert not ensemble.is_staff("v4")
+
+def test_tracker_advanced():
+    ext = OSNetExtractor()
+    crop = np.zeros((100, 100, 3), dtype=np.uint8)
+    emb = ext.extract(crop)
+    
+    # Empty crop
+    emb2 = ext.extract(None)
+    
+    tracker = ReIDTracker(extractor=ext)
+    now = datetime.now(timezone.utc)
+    
+    # New visitor
+    vid, reentry, conf = tracker.get_or_create_visitor("CAM1", 1, crop, now)
+    
+    # Same visitor existing
+    vid2, reentry2, conf2 = tracker.get_or_create_visitor("CAM1", 1, crop, now + timedelta(seconds=5))
+    assert vid == vid2
+    
+    # Exit and re-enter
+    tracker.record_exit("CAM1", 1, now + timedelta(seconds=10))
+    vid3, reentry3, conf3 = tracker.get_or_create_visitor("CAM2", 2, crop, now + timedelta(minutes=5))
+    assert vid3 == vid
+    assert reentry3
+    
+    tracker.mark_staff(vid)
+    assert tracker.next_seq(vid) == 1
+    
+    # Cross camera dup
+    vid_cross = tracker.is_cross_camera_duplicate("CAM3", 3, crop)
+    assert vid_cross == vid
+    
+    tracker.cleanup_stale_sessions(max_age_minutes=0)
+
+def test_websocket_live_coverage():
+    from fastapi.testclient import TestClient
+    from app.main import app, manager
+    import asyncio
+    
+    client = TestClient(app)
+    with client.websocket_connect('/ws/stores/ST1008/live') as websocket:
+        pass
+    
+    asyncio.run(manager.broadcast("ST1008", {"data": "test"}))
+
+@pytest.mark.asyncio
+async def test_camera_metrics_endpoint(client: AsyncClient, setup_metrics_data):
+    response = await client.get("/stores/ST1008/cameras?window=today")
+    assert response.status_code == 200
+    data = response.json()
+    assert "cameras" in data
+    cams = data["cameras"]
+    assert len(cams) >= 5 # default cameras
+

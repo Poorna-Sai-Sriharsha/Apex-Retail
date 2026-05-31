@@ -45,7 +45,7 @@ services:
         condition: service_healthy
     volumes:
       - pipeline_output:/app/pipeline/output
-      - ./pipeline/store_layouts:/app/pipeline/store_layouts:ro
+      - ./pipeline/store_layouts:/app/pipeline/store_layouts
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s

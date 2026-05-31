@@ -25,7 +25,7 @@ docker compose up -d
 python -m pipeline.generate_synthetic --api-url http://localhost:8000
 
 # 5. Query the API
-curl http://localhost:8000/stores/APEX_RETAIL/metrics
+curl http://localhost:8000/stores/STORE_BLR_001/metrics
 ```
 
 The API is now live at **http://localhost:8000**.
@@ -38,17 +38,17 @@ The API is now live at **http://localhost:8000**.
 # Health check
 curl http://localhost:8000/health
 
-# Store metrics
-curl http://localhost:8000/stores/APEX_RETAIL/metrics
+# Store metrics (spec acceptance gate)
+curl http://localhost:8000/stores/STORE_BLR_002/metrics
 
 # Conversion funnel
-curl http://localhost:8000/stores/APEX_RETAIL/funnel
+curl http://localhost:8000/stores/STORE_BLR_001/funnel
 
 # Zone heatmap
-curl http://localhost:8000/stores/APEX_RETAIL/heatmap
+curl http://localhost:8000/stores/STORE_BLR_001/heatmap
 
 # Anomaly detection
-curl http://localhost:8000/stores/APEX_RETAIL/anomalies
+curl http://localhost:8000/stores/STORE_BLR_001/anomalies
 
 # API docs (Swagger)
 open http://localhost:8000/docs
@@ -67,7 +67,7 @@ Place clips in this structure:
 │   ├── ENTRY_camera.mp4      # Entry/exit threshold camera
 │   ├── FLOOR_camera.mp4      # Main floor zone coverage
 │   └── BILLING_camera.mp4   # Billing counter area
-├── APEX_RETAIL/
+├── STORE_BLR_002/
 │   └── ...
 ```
 
@@ -112,14 +112,14 @@ Watch the **live dashboard** update as events stream in.
 
 ---
 
-## Live Dashboard (Part E \u2014 Bonus)
+## Live Dashboard (Part E — Bonus)
 
-**URL**: http://localhost:8000/
+**URL**: http://localhost:8000/dashboard/STORE_BLR_001
 
 The dashboard provides a premium, professional "Dark Mode" interface with:
 - **Real-time KPI cards**: Visitors, Conversion Rate, Queue Depth, Abandonment Rate
 - **Live Conversion Funnel**: 4-stage bar chart with drop-off percentages
-- **Zone Heatmap**: Visit frequency normalised 0\u2013100 per zone
+- **Zone Heatmap**: Visit frequency normalised 0–100 per zone
 - **Anomaly Panel**: Live anomaly feed with severity (INFO/WARN/CRITICAL)
 
 The dashboard auto-refreshes every 5 seconds. It is built with Vanilla HTML/CSS/JS and served directly by FastAPI.
@@ -172,7 +172,7 @@ All events follow this exact schema:
 ```json
 {
   "event_id":   "uuid-v4",
-  "store_id":   "APEX_RETAIL",
+  "store_id":   "STORE_BLR_001",
   "camera_id":  "CAM_ENTRY_01",
   "visitor_id": "VIS_c8a2f1",
   "event_type": "ZONE_DWELL",
@@ -208,7 +208,7 @@ curl -X POST http://localhost:8000/events/ingest \
 ### GET /stores/{store_id}/metrics
 ```json
 {
-  "store_id": "APEX_RETAIL",
+  "store_id": "STORE_BLR_002",
   "window": "today",
   "unique_visitors": 142,
   "conversion_rate": 0.31,
@@ -227,32 +227,41 @@ Returns `STALE_FEED` warning if any store's last event is >10 minutes old.
 
 ```
 store-intelligence/
-├── pipeline/              # Detection pipeline
-│   ├── detect.py          # YOLOv8 + ByteTrack + Re-ID + Zones + POS main loop
-│   ├── tracker.py         # OSNet Re-ID + session management
-│   ├── emit.py            # Event schema + JSONL writer
-│   ├── staff_classifier.py # Ensemble staff detection
-│   ├── run.sh             # One-command pipeline runner
-│   └── store_layouts/     # Store zone configurations (5 stores)
-├── app/                   # FastAPI application
-│   ├── main.py            # App + middleware + WebSocket + Heatmap
-│   ├── models.py          # Pydantic v2 schemas + ORM + Database
-│   ├── ingestion.py       # POST /events/ingest
-│   ├── metrics.py         # GET /stores/{id}/metrics
-│   ├── anomalies.py       # GET /stores/{id}/anomalies
-│   ├── dashboard.html     # Live WebSocket dashboard
-├── tests/                 # Test suite (>70% coverage)
-│   ├── test_pipeline.py   # Pipeline module tests
-│   ├── test_metrics.py    # Metrics endpoint tests
-│   ├── test_anomalies.py  # Anomaly detection tests
-│   └── test_edge_cases.py # All spec edge cases
-├── DESIGN.md              # Architecture + AI decisions
-├── CHOICES.md             # 3 key engineering choices
-├── docker-compose.yml     # Full stack (API + PostgreSQL)
-├── Dockerfile             # Python 3.11 slim
-├── requirements.txt       # All dependencies
-├── pyproject.toml         # Pytest + coverage config
-└── .env.example           # Environment variable template
+├── pipeline/                  # Detection pipeline
+│   ├── detect.py              # YOLOv8 + ByteTrack + Re-ID + Zones + POS main loop
+│   ├── tracker.py             # OSNet Re-ID + session management
+│   ├── emit.py                # Event schema + JSONL writer
+│   ├── staff_classifier.py    # Ensemble staff detection
+│   ├── generate_synthetic.py  # Synthetic event generator
+│   ├── replay.py              # Time-scaled event replay
+│   ├── run.sh                 # One-command pipeline runner
+│   └── store_layouts/         # Store zone configurations (5 stores)
+├── app/                       # FastAPI application
+│   ├── main.py                # App entrypoint + middleware + WebSocket
+│   ├── logging_config.py      # Structured JSON logging (structlog)
+│   ├── models.py              # Pydantic v2 schemas + ORM + Database
+│   ├── ingestion.py           # POST /events/ingest
+│   ├── metrics.py             # GET /stores/{id}/metrics
+│   ├── funnel.py              # GET /stores/{id}/funnel
+│   ├── heatmap.py             # GET /stores/{id}/heatmap
+│   ├── anomalies.py           # GET /stores/{id}/anomalies
+│   ├── health.py              # GET /health
+│   ├── config_api.py          # GET /stores/{id}/config
+│   └── dashboard.html         # Live WebSocket dashboard
+├── tests/                     # Test suite (>70% coverage)
+│   ├── test_pipeline.py       # Pipeline module tests
+│   ├── test_metrics.py        # Metrics endpoint tests
+│   ├── test_anomalies.py      # Anomaly detection tests
+│   ├── test_edge_cases.py     # All spec edge cases
+│   └── test_coverage_boost.py # Additional coverage
+├── docs/
+│   ├── DESIGN.md              # Architecture + AI decisions
+│   └── CHOICES.md             # 3 key engineering choices
+├── docker-compose.yml         # Full stack (API + PostgreSQL)
+├── Dockerfile                 # Python 3.11 slim
+├── requirements.txt           # All dependencies
+├── pyproject.toml             # Pytest + coverage config
+└── .env.example               # Environment variable template
 ```
 
 ---
@@ -263,7 +272,7 @@ store-intelligence/
 |---|---|---|
 | `DATABASE_URL` | `sqlite+aiosqlite:///./store_intelligence.db` | Database connection string |
 | `LOG_LEVEL` | `INFO` | Logging level |
-| `STORE_IDS` | `STORE_BLR_001,...,005` | Comma-separated store IDs |
+| `STORE_IDS` | `STORE_BLR_001,...,005,ST1008` | Comma-separated store IDs |
 | `STALE_FEED_MINUTES` | `10` | Minutes before a store is flagged stale |
 | `REID_SIMILARITY_THRESHOLD` | `0.75` | Cosine similarity for Re-ID matching |
 | `REID_REENTRY_WINDOW_MINUTES` | `30` | Max gap for re-entry detection |
@@ -290,4 +299,4 @@ When the CCTV ZIP arrives:
 Challenge use only. Not for redistribution.
 
 
-**Dashboard URL:** [http://localhost:8000/dashboard/APEX_RETAIL](http://localhost:8000/dashboard/APEX_RETAIL)
+**Dashboard URL:** [http://localhost:8000/dashboard/STORE_BLR_001](http://localhost:8000/dashboard/STORE_BLR_001)

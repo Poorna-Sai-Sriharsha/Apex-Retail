@@ -25,7 +25,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import get_db
-from app.main import get_logger
+from app.logging_config import get_logger
 from app.metrics import _window_bounds
 from app.models import EventORM, EventType, FunnelResponse, FunnelStage
 
@@ -44,7 +44,11 @@ async def get_funnel(
     Compute the 4-stage conversion funnel at session (visitor_id) level.
     Re-entries are deduplicated — a visitor_id counts once per stage maximum.
     """
-    start, end = _window_bounds(window)
+    max_ts_result = await db.execute(select(func.max(EventORM.timestamp)).where(EventORM.store_id == store_id))
+    max_ts = max_ts_result.scalar_one_or_none()
+    now = max_ts if max_ts else datetime.now(timezone.utc)
+
+    start, end = _window_bounds(window, now)
 
     filters = [
         EventORM.store_id == store_id,
@@ -68,32 +72,32 @@ async def get_funnel(
             )
         )
     )
-    entry_count: int = entry_result.scalar_one() or 0  # pragma: no cover
-  # pragma: no cover
-    # Stage 2: Zone Visit — unique visitors who entered any zone  # pragma: no cover
-    zone_result = await db.execute(  # pragma: no cover
-        select(func.count(func.distinct(EventORM.visitor_id))).where(  # pragma: no cover
-            and_(  # pragma: no cover
-                base_filter,  # pragma: no cover
-                EventORM.event_type == EventType.ZONE_ENTER.value,  # pragma: no cover
-            )  # pragma: no cover
-        )  # pragma: no cover
-    )  # pragma: no cover
-    zone_count: int = zone_result.scalar_one() or 0  # pragma: no cover
-  # pragma: no cover
-    # Stage 3: Billing Queue — unique visitors who joined billing queue  # pragma: no cover
-    billing_result = await db.execute(  # pragma: no cover
-        select(func.count(func.distinct(EventORM.visitor_id))).where(  # pragma: no cover
-            and_(  # pragma: no cover
-                base_filter,  # pragma: no cover
-                EventORM.event_type == EventType.BILLING_QUEUE_JOIN.value,  # pragma: no cover
-            )  # pragma: no cover
-        )  # pragma: no cover
-    )  # pragma: no cover
-    billing_count: int = billing_result.scalar_one() or 0  # pragma: no cover
-  # pragma: no cover
-    # Stage 4: Purchase — joined billing AND did NOT abandon  # pragma: no cover
-    abandon_visitors_result = await db.execute(  # pragma: no cover
+    entry_count: int = entry_result.scalar_one() or 0
+
+    # Stage 2: Zone Visit — unique visitors who entered any zone
+    zone_result = await db.execute(
+        select(func.count(func.distinct(EventORM.visitor_id))).where(
+            and_(
+                base_filter,
+                EventORM.event_type == EventType.ZONE_ENTER.value,
+            )
+        )
+    )
+    zone_count: int = zone_result.scalar_one() or 0
+
+    # Stage 3: Billing Queue — unique visitors who joined billing queue
+    billing_result = await db.execute(
+        select(func.count(func.distinct(EventORM.visitor_id))).where(
+            and_(
+                base_filter,
+                EventORM.event_type == EventType.BILLING_QUEUE_JOIN.value,
+            )
+        )
+    )
+    billing_count: int = billing_result.scalar_one() or 0
+
+    # Stage 4: Purchase — joined billing AND did NOT abandon
+    abandon_visitors_result = await db.execute(
         select(func.distinct(EventORM.visitor_id)).where(
             and_(
                 base_filter,
@@ -104,40 +108,40 @@ async def get_funnel(
     abandoned_ids = {row[0] for row in abandon_visitors_result.fetchall()}
 
     # Purchase count: billing visitors who did NOT abandon
-    if billing_count > 0:  # pragma: no cover
-        purchase_result = await db.execute(  # pragma: no cover
-            select(func.count(func.distinct(EventORM.visitor_id))).where(  # pragma: no cover
-                and_(  # pragma: no cover
-                    base_filter,  # pragma: no cover
-                    EventORM.event_type == EventType.BILLING_QUEUE_JOIN.value,  # pragma: no cover
-                    EventORM.visitor_id.notin_(abandoned_ids) if abandoned_ids else True,  # pragma: no cover
-                )  # pragma: no cover
-            )  # pragma: no cover
-        )  # pragma: no cover
-        purchase_count: int = purchase_result.scalar_one() or 0  # pragma: no cover
-    else:  # pragma: no cover
-        purchase_count = 0  # pragma: no cover
-  # pragma: no cover
-    def drop_off(prev: int, curr: int) -> float:  # pragma: no cover
+    if billing_count > 0:
+        purchase_result = await db.execute(
+            select(func.count(func.distinct(EventORM.visitor_id))).where(
+                and_(
+                    base_filter,
+                    EventORM.event_type == EventType.BILLING_QUEUE_JOIN.value,
+                    EventORM.visitor_id.notin_(abandoned_ids) if abandoned_ids else True,
+                )
+            )
+        )
+        purchase_count: int = purchase_result.scalar_one() or 0
+    else:
+        purchase_count = 0
+
+    def drop_off(prev: int, curr: int) -> float:
         if prev == 0:
             return 0.0
         return round((prev - curr) / prev * 100, 2)
 
-    stages = [  # pragma: no cover
-        FunnelStage(stage="Entry", count=entry_count, drop_off_pct=0.0),  # pragma: no cover
-        FunnelStage(stage="Zone Visit", count=zone_count, drop_off_pct=drop_off(entry_count, zone_count)),  # pragma: no cover
-        FunnelStage(stage="Billing Queue", count=billing_count, drop_off_pct=drop_off(zone_count, billing_count)),  # pragma: no cover
-        FunnelStage(stage="Purchase", count=purchase_count, drop_off_pct=drop_off(billing_count, purchase_count)),  # pragma: no cover
-    ]  # pragma: no cover
-  # pragma: no cover
-    logger.info(  # pragma: no cover
-        "funnel_computed",  # pragma: no cover
-        store_id=store_id,  # pragma: no cover
-        window=window,  # pragma: no cover
-        entry=entry_count,  # pragma: no cover
-        zone=zone_count,  # pragma: no cover
-        billing=billing_count,  # pragma: no cover
-        purchase=purchase_count,  # pragma: no cover
-    )  # pragma: no cover
-  # pragma: no cover
-    return FunnelResponse(store_id=store_id, window=window, stages=stages)  # pragma: no cover
+    stages = [
+        FunnelStage(stage="Entry", count=entry_count, drop_off_pct=0.0),
+        FunnelStage(stage="Zone Visit", count=zone_count, drop_off_pct=drop_off(entry_count, zone_count)),
+        FunnelStage(stage="Billing Queue", count=billing_count, drop_off_pct=drop_off(zone_count, billing_count)),
+        FunnelStage(stage="Purchase", count=purchase_count, drop_off_pct=drop_off(billing_count, purchase_count)),
+    ]
+
+    logger.info(
+        "funnel_computed",
+        store_id=store_id,
+        window=window,
+        entry=entry_count,
+        zone=zone_count,
+        billing=billing_count,
+        purchase=purchase_count,
+    )
+
+    return FunnelResponse(store_id=store_id, window=window, stages=stages)

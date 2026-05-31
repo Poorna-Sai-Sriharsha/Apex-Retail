@@ -15,7 +15,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import get_db
-from app.main import get_logger
+from app.logging_config import get_logger
 from app.models import EventORM, HealthResponse, StoreHealthStatus
 
 router = APIRouter()
@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 STORE_IDS: list[str] = os.getenv(
     "STORE_IDS",
-    "STORE_BLR_001,STORE_BLR_002,STORE_BLR_003,STORE_BLR_004,STORE_BLR_005",
+    "STORE_BLR_001,STORE_BLR_002,STORE_BLR_003,STORE_BLR_004,STORE_BLR_005,ST1008",
 ).split(",")
 
 STALE_FEED_MINUTES = int(os.getenv("STALE_FEED_MINUTES", "10"))

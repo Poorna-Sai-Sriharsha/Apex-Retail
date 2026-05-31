@@ -89,7 +89,7 @@ async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 def make_event(
     event_type: str = "ENTRY",
-    store_id: str = "STORE_BLR_002",
+    store_id: str = "ST1008",
     camera_id: str = "CAM_ENTRY_01",
     visitor_id: str | None = None,
     zone_id: str | None = None,
@@ -152,7 +152,7 @@ def make_event(
 
 def make_session_events(
     visitor_id: str | None = None,
-    store_id: str = "STORE_BLR_002",
+    store_id: str = "ST1008",
     base_time: datetime | None = None,
     is_staff: bool = False,
     go_to_billing: bool = True,
@@ -195,7 +195,7 @@ def make_session_events(
 
 @pytest.fixture
 def sample_store_id() -> str:
-    return "STORE_BLR_002"
+    return "ST1008"
 
 
 @pytest.fixture

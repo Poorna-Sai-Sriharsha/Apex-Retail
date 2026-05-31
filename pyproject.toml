@@ -15,14 +15,13 @@ addopts = [
 
 [tool.coverage.run]
 source = ["app", "pipeline"]
+concurrency = ["greenlet", "thread"]
 omit = [
     "*/tests/*",
     "*/__init__.py",
-    "pipeline/detect.py",      # Requires GPU/OpenCV for full test
+    "pipeline/detect.py",             # Requires GPU/OpenCV for full test
     "pipeline/generate_synthetic.py", # Utility, not core API
-    "pipeline/replay.py",             # Utility, not core API
-    "pipeline/staff_classifier.py",   # Legacy un-mocked
-    "pipeline/tracker.py",            # Legacy un-mocked
+    "pipeline/replay.py",            # Utility, not core API
 ]
 
 [tool.coverage.report]

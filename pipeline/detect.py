@@ -158,7 +158,7 @@ Zone mapping: load store_layout.json, map bounding-box centroids to zone polygon
 
 Each store has a layout JSON with zone definitions:
   {
-    "store_id": "STORE_BLR_002",
+    "store_id": "ST1008",
     "cameras": {
       "CAM_ENTRY_01": {"type": "entry", "fov_polygon": [[...], ...]},
       ...
@@ -394,7 +394,7 @@ Usage:
 Strategy:
   - Each .mp4 file is treated as a single camera for a unique store.
   - CAM 1 -> STORE_BLR_001 (CAM_ENTRY_01)
-  - CAM 2 -> STORE_BLR_002 (CAM_ENTRY_01)
+  - CAM 2 -> ST1008 (CAM_ENTRY_01)
   - ...etc.
   - Since each store has only one camera, we use CAM_ENTRY_01 as the camera ID
     so that entry/exit crossing logic works via the entry_line config.
@@ -483,6 +483,7 @@ def process_video(
     clip_start: datetime,
     emitter: EventEmitter,
     model: Optional[object] = None,
+    max_frames: int = 0,
 ) -> dict:
     """
     Process a single video file through the YOLOv8 detection pipeline.
@@ -520,6 +521,10 @@ def process_video(
     last_progress = 0
 
     while True:
+        if max_frames > 0 and frame_number >= max_frames:
+            print(f"  [INFO] Reached max_frames ({max_frames}), stopping video.")
+            break
+
         ret, frame = cap.read()
         if not ret:
             break
@@ -786,9 +791,16 @@ def main() -> None:
     for idx, video_path in enumerate(video_files):
         stem = video_path.stem  # e.g. "CAM 1"
 
-        # All videos belong to APEX_RETAIL
-        store_id = "APEX_RETAIL"
-        
+        # Read store_id from layout JSON (falls back to STORE_BLR_001)
+        import json as _json
+        _layout_for_store = Path(args.layouts_dir) / f"{CAM_CAMERA_MAP.get(stem, f'CAM_UNKNOWN_0{idx + 1}')}.json"
+        store_id = "STORE_BLR_001"
+        if _layout_for_store.exists():
+            try:
+                with open(_layout_for_store) as _lf:
+                    store_id = _json.load(_lf).get("store_id", "STORE_BLR_001")
+            except Exception:
+                pass
         # Map video file to specific camera ID
         camera_id = CAM_CAMERA_MAP.get(stem)
         if not camera_id:
@@ -816,6 +828,7 @@ def main() -> None:
                 clip_start=clip_start,
                 emitter=emitter,
                 model=model,
+                max_frames=args.max_frames,
             )
 
         for k in total_stats:

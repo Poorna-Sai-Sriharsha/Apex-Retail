@@ -1,5 +1,5 @@
 {
-  "store_id": "APEX_RETAIL",
+  "store_id": "STORE_BLR_001",
   "camera_id": "CAM_FLOOR_02",
   "open_hours": {
     "open": "09:00",
@@ -15,7 +15,7 @@
   },
   "zones": [
     {
-      "zone_id": "COSMETICS",
+      "zone_id": "MAKEUP",
       "cameras": ["CAM_FLOOR_02"],
       "polygon": [[50, 420], [480, 420], [480, 800], [50, 800]],
       "description": "Cosmetics section"

@@ -89,7 +89,7 @@ class TestTimestampGeneration:
 class TestBuildEvent:
     def test_entry_event_has_null_zone(self):
         evt = build_event(
-            store_id="STORE_BLR_002",
+            store_id="ST1008",
             camera_id="CAM_ENTRY_01",
             visitor_id="VIS_abc123",
             event_type="ENTRY",
@@ -101,7 +101,7 @@ class TestBuildEvent:
 
     def test_zone_enter_requires_zone_id(self):
         evt = build_event(
-            store_id="STORE_BLR_002",
+            store_id="ST1008",
             camera_id="CAM_FLOOR_01",
             visitor_id="VIS_abc123",
             event_type="ZONE_ENTER",
@@ -114,7 +114,7 @@ class TestBuildEvent:
     def test_zone_enter_without_zone_raises(self):
         with pytest.raises(ValueError, match="zone_id required"):
             build_event(
-                store_id="STORE_BLR_002",
+                store_id="ST1008",
                 camera_id="CAM_FLOOR_01",
                 visitor_id="VIS_abc123",
                 event_type="ZONE_ENTER",
@@ -127,7 +127,7 @@ class TestBuildEvent:
         """CRITICAL: Low confidence must be emitted, never suppressed."""
         low_conf = 0.41  # Just above detection threshold
         evt = build_event(
-            store_id="STORE_BLR_002",
+            store_id="ST1008",
             camera_id="CAM_FLOOR_01",
             visitor_id="VIS_abc123",
             event_type="ZONE_ENTER",
@@ -140,7 +140,7 @@ class TestBuildEvent:
 
     def test_billing_queue_join_defaults_queue_depth(self):
         evt = build_event(
-            store_id="STORE_BLR_002",
+            store_id="ST1008",
             camera_id="CAM_BILLING_01",
             visitor_id="VIS_abc123",
             event_type="BILLING_QUEUE_JOIN",
@@ -156,7 +156,7 @@ class TestBuildEvent:
             zone = "BILLING" if "BILLING" in et or "ZONE" in et else None
             qd = 2 if et == "BILLING_QUEUE_JOIN" else None
             evt = build_event(
-                store_id="STORE_BLR_002",
+                store_id="ST1008",
                 camera_id="CAM_ENTRY_01",
                 visitor_id="VIS_abc123",
                 event_type=et,
@@ -169,7 +169,7 @@ class TestBuildEvent:
 
     def test_confidence_clamped_to_valid_range(self):
         evt = build_event(
-            store_id="STORE_BLR_002",
+            store_id="ST1008",
             camera_id="CAM_ENTRY_01",
             visitor_id="VIS_abc123",
             event_type="ENTRY",
@@ -185,7 +185,7 @@ class TestEventEmitter:
         output = str(tmp_path / "test_events.jsonl")
         with EventEmitter(output_path=output) as emitter:
             evt = build_event(
-                store_id="STORE_BLR_002",
+                store_id="ST1008",
                 camera_id="CAM_ENTRY_01",
                 visitor_id="VIS_abc123",
                 event_type="ENTRY",
@@ -232,7 +232,7 @@ class TestZoneMapper:
     def mapper(self, tmp_path):
         import json
         layout = {
-            "store_id": "STORE_BLR_002",
+            "store_id": "ST1008",
             "cameras": {"CAM_FLOOR_01": {"type": "floor"}},
             "entry_line": {"camera": "CAM_ENTRY_01", "y": 540, "axis": "horizontal", "direction": "top_to_bottom"},
             "zones": [
@@ -421,14 +421,14 @@ class TestPOSCorrelator:
 
         # Write a POS CSV
         csv_content = "store_id,transaction_id,timestamp,basket_value_inr\n"
-        csv_content += "STORE_BLR_002,TXN_001,2026-03-03T10:05:00Z,1240.00\n"
+        csv_content += "ST1008,TXN_001,2026-03-03T10:05:00Z,1240.00\n"
         csv_file = tmp_path / "pos.csv"
         csv_file.write_text(csv_content)
         corr.load_transactions(str(csv_file))
 
         # Visitor in billing 3 min before transaction
         arrival = datetime(2026, 3, 3, 10, 2, 0, tzinfo=timezone.utc)
-        corr.record_billing_arrival("VIS_abc123", "STORE_BLR_002", arrival)
+        corr.record_billing_arrival("VIS_abc123", "ST1008", arrival)
 
         converted, abandoned = corr.resolve()
         assert "VIS_abc123" in converted
@@ -442,7 +442,7 @@ class TestPOSCorrelator:
         corr.load_transactions(str(csv_file))
 
         arrival = datetime(2026, 3, 3, 10, 2, 0, tzinfo=timezone.utc)
-        corr.record_billing_arrival("VIS_xyz999", "STORE_BLR_002", arrival)
+        corr.record_billing_arrival("VIS_xyz999", "ST1008", arrival)
 
         converted, abandoned = corr.resolve()
         assert "VIS_xyz999" in abandoned
@@ -450,13 +450,13 @@ class TestPOSCorrelator:
     def test_transaction_outside_window_not_matched(self, tmp_path):
         corr = POSCorrelator()
         csv_content = "store_id,transaction_id,timestamp,basket_value_inr\n"
-        csv_content += "STORE_BLR_002,TXN_002,2026-03-03T10:20:00Z,500.00\n"  # 15 min later
+        csv_content += "ST1008,TXN_002,2026-03-03T10:20:00Z,500.00\n"  # 15 min later
         csv_file = tmp_path / "pos.csv"
         csv_file.write_text(csv_content)
         corr.load_transactions(str(csv_file))
 
         arrival = datetime(2026, 3, 3, 10, 2, 0, tzinfo=timezone.utc)
-        corr.record_billing_arrival("VIS_late", "STORE_BLR_002", arrival)
+        corr.record_billing_arrival("VIS_late", "ST1008", arrival)
 
         converted, abandoned = corr.resolve()
         assert "VIS_late" in abandoned
@@ -465,11 +465,11 @@ class TestPOSCorrelator:
         corr = POSCorrelator()
         now = datetime(2026, 3, 3, 10, 0, 0, tzinfo=timezone.utc)
 
-        corr.record_billing_arrival("VIS_001", "STORE_BLR_002", now)
-        corr.record_billing_arrival("VIS_002", "STORE_BLR_002", now + timedelta(seconds=30))
-        corr.record_billing_arrival("VIS_003", "STORE_BLR_002", now + timedelta(seconds=60))
+        corr.record_billing_arrival("VIS_001", "ST1008", now)
+        corr.record_billing_arrival("VIS_002", "ST1008", now + timedelta(seconds=30))
+        corr.record_billing_arrival("VIS_003", "ST1008", now + timedelta(seconds=60))
 
-        depth = corr.get_queue_depth_at("STORE_BLR_002", now + timedelta(seconds=90))
+        depth = corr.get_queue_depth_at("ST1008", now + timedelta(seconds=90))
         assert depth == 3
 
 
