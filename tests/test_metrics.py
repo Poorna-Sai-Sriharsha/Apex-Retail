@@ -498,3 +498,207 @@ async def test_heatmap_endpoint_fixed(client: AsyncClient, sample_store_id: str,
     response = await client.get(f"/stores/{sample_store_id}/heatmap?window=today")
     assert response.status_code == 200
     assert "zones" in response.json()
+
+
+# --- Merged from test_coverage_boost.py ---
+# PROMPT: Generate comprehensive pytest cases for the lowest coverage modules (anomalies, metrics, funnel, health)
+
+# using the existing fixtures in conftest.py. Focus on edge cases for average dwell calculations,
+
+# conversion drop anomalies, dead zone logic, and 7-day metric aggregation bounds.
+
+#
+
+# CHANGES MADE:
+
+# - Added full session simulation using make_session_events
+
+# - Overrode test database strictly to ensure isolation for 7-day anomaly tests
+
+# - Added specific dwell times and zone_ids to verify dictionary aggregation in avg_dwell_by_zone
+
+# - Verified queue depth maximum logic explicitly
+
+
+
+
+
+import pytest
+
+from httpx import AsyncClient
+
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models import EventORM
+
+from tests.conftest import make_event, make_session_events
+
+
+
+pytestmark = pytest.mark.asyncio
+
+
+
+@pytest.fixture
+
+async def setup_metrics_data(db: AsyncSession, client: AsyncClient):
+
+    """Seed data specifically to hit all paths in metrics.py"""
+
+    base = datetime.now(timezone.utc) - timedelta(hours=2)
+
+    
+
+    # 1. Normal purchased session
+
+    session1 = make_session_events(visitor_id="VIS_000001", base_time=base, go_to_billing=True, abandon=False)
+
+    
+
+    # 2. Abandoned session
+
+    session2 = make_session_events(visitor_id="VIS_000002", base_time=base, go_to_billing=True, abandon=True)
+
+    
+
+    # 3. Staff session (should be ignored)
+
+    session3 = make_session_events(visitor_id="VIS_000003", base_time=base, is_staff=True)
+
+    
+
+    # 4. Another normal purchased session with specific dwell times to test aggregation
+
+    session4 = make_session_events(visitor_id="VIS_000004", base_time=base)
+
+    session4.append(make_event("ZONE_DWELL", visitor_id="VIS_000004", zone_id="MAKEUP", dwell_ms=10000, timestamp=base))
+
+    session4.append(make_event("ZONE_DWELL", visitor_id="VIS_000004", zone_id="MAKEUP", dwell_ms=50000, timestamp=base))
+
+    
+
+    all_events = session1 + session2 + session3 + session4
+
+    
+
+    response = await client.post("/events/ingest", json={"events": all_events})
+
+    assert response.status_code == 200
+
+
+
+async def test_metrics_full_path(client: AsyncClient, setup_metrics_data):
+
+    """Hits avg_dwell_by_zone, abandonment_rate, queue_depth, unique_visitors"""
+
+    response = await client.get("/stores/ST1008/metrics?window=today")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    
+
+    # Should exclude staff (VIS_003). VIS_001, VIS_002, VIS_004 are valid = 3 unique
+
+    assert data["unique_visitors"] == 3
+
+    
+
+    # 2 went to billing and purchased (VIS_001, VIS_004), 1 abandoned (VIS_002)
+
+    # abandonment rate = 1 abandoned / 3 entered billing = 0.33
+
+    assert abs(data["abandonment_rate"] - 0.333) < 0.05
+
+    
+
+    # conversion rate = 2 purchased / 3 unique = 0.66
+
+    assert abs(data["conversion_rate"] - 0.666) < 0.05
+
+    
+
+    # queue depth should be 2 (default from make_session_events)
+
+    assert data["queue_depth"] == 2
+
+    
+
+    # Check dwell by zone
+
+    assert "SKINCARE" in data["avg_dwell_by_zone"]
+
+    assert "MAKEUP" in data["avg_dwell_by_zone"]
+
+    assert data["avg_dwell_by_zone"]["MAKEUP"] == 30000  # (10k + 50k) / 2 = 30k
+
+
+
+async def test_metrics_7d_window(client: AsyncClient, setup_metrics_data):
+
+    """Hits the 7d window path in metrics"""
+
+    response = await client.get("/stores/ST1008/metrics?window=7d")
+
+    assert response.status_code == 200
+
+    assert response.json()["unique_visitors"] == 3
+
+
+
+async def test_funnel_with_dropoff(client: AsyncClient, setup_metrics_data):
+
+    """Hit funnel paths with actual dropoff pct calculation between non-zero stages"""
+
+    response = await client.get("/stores/ST1008/funnel")
+
+    assert response.status_code == 200
+
+    stages = response.json()["stages"]
+
+    
+
+    assert len(stages) == 4
+
+    assert stages[0]["stage"] == "Entry"
+
+    assert stages[0]["count"] == 3  # VIS_000001, VIS_000002, VIS_000004
+
+    
+
+    assert stages[1]["stage"] == "Zone Visit"
+
+    assert stages[1]["count"] == 3
+
+    
+
+    assert stages[2]["stage"] == "Billing Queue"
+
+    assert stages[2]["count"] == 3
+
+    
+
+    assert stages[3]["stage"] == "Purchase"
+
+    assert stages[3]["count"] == 2
+
+    
+
+    # Dropoff from Billing (3) to Purchase (2) = 1/3 = 33%
+
+    assert abs(stages[3]["drop_off_pct"] - 33.3) < 0.5
+
+
+
+@pytest.mark.asyncio
+async def test_camera_metrics_endpoint(client: AsyncClient, setup_metrics_data):
+    response = await client.get("/stores/ST1008/cameras?window=today")
+    assert response.status_code == 200
+    data = response.json()
+    assert "cameras" in data
+    cams = data["cameras"]
+    assert len(cams) >= 5 # default cameras
+

@@ -172,3 +172,108 @@ class TestAnomaliesResponse:
         for a in resp.json()["anomalies"]:
             assert a["details"] is not None
             assert isinstance(a["details"], dict)
+
+
+# --- Merged from test_coverage_boost.py ---
+import pytest
+from httpx import AsyncClient
+from datetime import datetime, timedelta, timezone
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models import EventORM
+from tests.conftest import make_session_events, make_event
+
+@pytest.fixture
+
+async def setup_anomaly_data(db: AsyncSession, client: AsyncClient):
+
+    """Seed data to trigger specific anomalies (CONVERSION_DROP, DEAD_ZONE)"""
+
+    now = datetime.now(timezone.utc)
+
+    
+
+    # 3 days ago, we had high conversion (2 purchasers out of 2 visitors)
+
+    day_minus_3 = now - timedelta(days=3)
+
+    past_session = make_session_events(visitor_id="VIS_aaaaaa", base_time=day_minus_3, go_to_billing=True, abandon=False)
+
+    past_session2 = make_session_events(visitor_id="VIS_bbbbbb", base_time=day_minus_3, go_to_billing=True, abandon=False)
+
+    
+
+    # Today, earlier (40 mins ago), someone visited 'MAKEUP' but no one visited since
+
+    today_minus_40 = make_session_events(visitor_id="VIS_cccccc", base_time=now - timedelta(minutes=40), go_to_billing=False)
+
+    today_minus_40.append(make_event("ZONE_ENTER", visitor_id="VIS_cccccc", zone_id="MAKEUP", timestamp=now - timedelta(minutes=39)))
+
+    
+
+    # Today, recently (5 mins ago), 5 visitors visited SKINCARE but not MAKEUP, and none purchased
+
+    today_sessions = []
+
+    for i in range(5):
+
+        today_sessions.extend(make_session_events(visitor_id=f"VIS_11111{i}", base_time=now - timedelta(minutes=5), go_to_billing=False))
+
+        
+
+    all_events = past_session + past_session2 + today_minus_40 + today_sessions
+
+    
+
+    response = await client.post("/events/ingest", json={"events": all_events})
+
+    assert response.status_code == 200
+
+
+
+async def test_conversion_drop_anomaly(client: AsyncClient, setup_anomaly_data):
+
+    """Trigger CONVERSION_DROP logic in anomalies.py"""
+
+    response = await client.get("/stores/ST1008/anomalies")
+
+    assert response.status_code == 200
+
+    anomalies = response.json()["anomalies"]
+
+    
+
+    drop_anomaly = next((a for a in anomalies if a["anomaly_type"] == "CONVERSION_DROP"), None)
+
+    assert drop_anomaly is not None
+
+    assert drop_anomaly["severity"] == "CRITICAL"
+
+
+
+async def test_dead_zone_anomaly(client: AsyncClient, setup_anomaly_data):
+
+    """Trigger DEAD_ZONE anomaly logic"""
+
+    # The setup has no ZONE_ENTER events for 'MAKEUP' in the last 30 minutes (only SKINCARE)
+
+    # But wait, DEAD_ZONE triggers if ANY mapped zone has 0 visits. We just need to hit the endpoint.
+
+    response = await client.get("/stores/ST1008/anomalies")
+
+    assert response.status_code == 200
+
+    anomalies = response.json()["anomalies"]
+
+    
+
+    dead_zone = next((a for a in anomalies if a["anomaly_type"] == "DEAD_ZONE"), None)
+
+    # Assuming there are defined zones that weren't visited in the last 30 mins
+
+    # We should have at least one DEAD_ZONE
+
+    assert dead_zone is not None
+
+    assert dead_zone["severity"] in ["WARN", "INFO", "CRITICAL"]
+
+
