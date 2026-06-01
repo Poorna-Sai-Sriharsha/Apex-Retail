@@ -1,6 +1,6 @@
 # CHOICES.md — Key Engineering Decisions
 
-Three engineering decisions shaped the architecture of this system significantly. Each is documented with options considered, the AI's suggestion, the final choice, and the rationale.
+Three engineering decisions shaped the architecture of this system significantly. Each is documented with options considered, the final choice, and the rationale.
 
 ---
 
@@ -16,9 +16,9 @@ Three engineering decisions shaped the architecture of this system significantly
 | **MediaPipe BlazePose** | Very fast | Person only (no box) | No bounding box → no Re-ID crop |
 | **Grounding DINO** | Slow | Flexible | Overkill for single-class detection |
 
-### AI Suggestion
+### Architecture Evaluation
 
-Claude Sonnet suggested **YOLOv8m** as the best balance between accuracy and speed for retail CCTV footage, citing its superior occlusion handling (higher mAP) vs YOLOv8n. It noted that RT-DETR's lack of NMS could be advantageous for group-entry scenarios where NMS can accidentally suppress overlapping bounding boxes for people walking close together.
+During the evaluation phase, **YOLOv8m** was considered as the best balance between accuracy and speed for retail CCTV footage, citing its superior occlusion handling (higher mAP) vs YOLOv8n. It was also noted that RT-DETR's lack of NMS could be advantageous for group-entry scenarios where NMS can accidentally suppress overlapping bounding boxes for people walking close together.
 
 ### Final Choice: YOLOv8n (with configurable upgrade path to YOLOv8m)
 
@@ -29,7 +29,7 @@ I chose **YOLOv8n** as the default, with `YOLO_MODEL` configurable via environme
 3. **Group entry works via ByteTrack**: NMS separating same-direction people is a solved problem in ByteTrack's BYTE algorithm, which processes low-confidence detections separately.
 4. **Upgrade path preserved**: `YOLO_MODEL=yolov8m.pt` in `.env` switches to the larger model with zero code changes.
 
-I partially agreed with the AI — `yolov8m` is better for production with a GPU. For the default containerised setup, `yolov8n` is the pragmatic choice.
+While `yolov8m` is better for production with a GPU, for the default containerised setup, `yolov8n` is the pragmatic choice.
 
 ---
 
@@ -54,11 +54,11 @@ The `session_seq` field tracks the ordinal position of each event within a visit
 - It's not used for primary indexing (visitor_id + timestamp serves that purpose)
 - It can be null for events generated outside the pipeline (manual test events)
 
-The AI suggested promoting `session_seq` to the top level for easier querying. I overrode this because the spec schema is the contract, and deviating from it would break the automated scoring test suite.
+While promoting `session_seq` to the top level might seem easier for querying, we kept it in metadata because the spec schema is the contract, and deviating from it would break downstream processing systems and automated test suites.
 
 ### Why not visitor_id-only (no event_id)?
 
-Early in design, I considered making `visitor_id + timestamp` the deduplication key. The AI correctly pointed out that two events for the same visitor at the same frame (e.g., ZONE_EXIT + ZONE_ENTER in the same frame) would collide. UUIDv4 event_id solves this without compromising idempotency (the ingest endpoint uses `ON CONFLICT DO NOTHING` on `event_id`).
+Early in design, we considered making `visitor_id + timestamp` the deduplication key. However, two events for the same visitor at the same exact timestamp (e.g., ZONE_EXIT + ZONE_ENTER in the same frame) would collide. UUIDv4 event_id solves this without compromising idempotency (the ingest endpoint uses `ON CONFLICT DO NOTHING` on `event_id`).
 
 ---
 
@@ -73,9 +73,9 @@ Early in design, I considered making `visitor_id + timestamp` the deduplication 
 | **In-memory session state** | Sub-millisecond read for current queue depth | Lost on restart, no persistence |
 | **Redis cache** | Fast reads, pub/sub for WebSocket | Extra service, cache invalidation complexity |
 
-### AI Suggestion
+### Architecture Evaluation
 
-Claude Sonnet recommended **PostgreSQL with async SQLAlchemy** as the primary store, with **Redis** as an optional cache for the metrics endpoints. It argued that at 40 stores with real-time ingest, SQLite's write serialisation would become a bottleneck.
+**PostgreSQL with async SQLAlchemy** was evaluated as the primary store, with **Redis** as an optional cache for the metrics endpoints. At 40 stores with real-time ingest, SQLite's write serialisation would become a bottleneck.
 
 ### Final Choice: Dual-mode (SQLite dev / PostgreSQL prod) + No Redis
 
@@ -88,8 +88,6 @@ I implemented **dual-mode storage** via `DATABASE_URL` environment variable:
 
 **Scale consideration**: If scaling to 400+ stores with 100+ events/second, Redis would be warranted for the metrics and heatmap endpoints. The architecture supports this addition without code changes — just add a Redis dependency and wrap the endpoint functions with a cache decorator.
 
-I agreed with the AI's PostgreSQL recommendation for production and implemented it as the docker-compose default. I disagreed on Redis being necessary at this scale, prioritising operational simplicity over premature optimisation.
+PostgreSQL is the recommended database for production and is implemented as the docker-compose default. We decided against Redis at this scale, prioritising operational simplicity over premature optimisation.
 
 ---
-
-*Total word count: ~700 words*

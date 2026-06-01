@@ -465,6 +465,72 @@ body {
     padding: 20px 0;
 }
 
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .dashboard-split {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 992px) {
+    .sidebar {
+        width: 220px;
+    }
+    .dashboard-content {
+        margin-left: 220px;
+        padding: 24px;
+    }
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        padding: 16px 20px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+    .brand {
+        margin-bottom: 16px;
+    }
+    .sidebar nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .nav-item {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+    .dashboard-content {
+        margin-left: 0;
+        padding: 16px;
+        gap: 20px;
+    }
+    .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .metrics-grid {
+        grid-template-columns: 1fr;
+        margin: 20px 0;
+    }
+    .config-split {
+        flex-direction: column !important;
+    }
+    .config-sidebar {
+        width: 100% !important;
+    }
+}
+
 </style>
 </head>
 <body>
@@ -613,7 +679,7 @@ body {
                     </div>
                 </div>
                 
-                <div style="display: flex; gap: 24px;">
+                <div class="config-split" style="display: flex; gap: 24px;">
                     <!-- Canvas Area -->
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 12px;">
@@ -635,7 +701,7 @@ body {
                     </div>
 
                     <!-- Right Sidebar -->
-                    <div style="width: 350px; display: flex; flex-direction: column; gap: 16px;">
+                    <div class="config-sidebar" style="width: 350px; display: flex; flex-direction: column; gap: 16px;">
                         <div class="panel" style="padding: 16px;">
                             <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Defined Zones</h3>
                             <div id="zone-list" style="display: flex; flex-direction: column; gap: 8px;">
@@ -998,8 +1064,9 @@ body {
     }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // We only have one unified store now
-    const currentStore = "APEX_RETAIL";
+    // Extract store ID from URL path (e.g. /dashboard/STORE_BLR_001)
+    const urlParts = window.location.pathname.split('/');
+    const currentStore = urlParts[urlParts.length - 1] || 'STORE_BLR_001';
     let currentCamera = "ALL";
     
     // DOM Elements

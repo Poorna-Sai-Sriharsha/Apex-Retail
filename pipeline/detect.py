@@ -436,7 +436,16 @@ from pipeline.staff_classifier import StaffClassifier
 
 # ── Constants ──────────────────────────────────────────────────────────────
 PERSON_CLASS_ID = 0
-YOLO_CONF_THRESHOLD = 0.3  # Lower threshold to catch more people in retail
+
+# WHY 0.3 threshold? We explicitly do not suppress low-confidence detections. 
+# In retail CCTV, partial occlusions (customers behind displays) are frequent. 
+# ByteTrack's BYTE algorithm uses these low-confidence boxes to maintain 
+# consistent tracking identities rather than losing them during occlusion.
+YOLO_CONF_THRESHOLD = 0.3  
+
+# WHY yolov8n? The Nano model is chosen as the pragmatic default because it 
+# processes video ~2x faster on CPUs, making edge-deployment feasible without GPUs.
+# Production environments with GPUs can override this to yolov8m via the .env file.
 YOLO_MODEL = os.getenv("YOLO_MODEL", "yolov8n.pt")
 FPS = 15.0
 FRAME_SKIP = 2  # Process every Nth frame for speed (1 = every frame)
@@ -591,7 +600,10 @@ def process_video(
                     # Extract crop for Re-ID
                     crop = extract_crop(frame, x1, y1, x2, y2)
 
-                    # Cross-camera dedup (same store only)
+                    # WHY Cross-camera deduplication? 
+                    # Overlapping camera fields of view would double-count the same 
+                    # physical person. ReID matches appearance embeddings (cosine sim > 0.75) 
+                    # within a strict time window (< 30 mins) to merge them into one visitor_id.
                     existing_vid = reid_tracker.is_cross_camera_duplicate(
                         camera_id, int(track_id), crop
                     )

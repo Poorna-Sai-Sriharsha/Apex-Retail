@@ -32,7 +32,12 @@ def make_visitor_id() -> str:
 
 
 def make_event_id() -> str:
-    """Generate a globally unique UUIDv4 string."""
+    """
+    Generate a globally unique UUIDv4 string.
+    WHY UUIDv4? It allows distributed edge nodes (individual stores/cameras) 
+    to generate globally unique event IDs statelessly, without needing to 
+    coordinate with a central database sequence or worry about collisions.
+    """
     return str(uuid.uuid4())
 
 

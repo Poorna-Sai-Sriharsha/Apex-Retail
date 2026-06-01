@@ -43,6 +43,13 @@ logger = get_logger(__name__)
 
 # ── WebSocket connection manager ───────────────────────────────────────────
 class ConnectionManager:
+    """
+    Manages active WebSocket connections per store.
+    WHY: Instead of having the dashboard poll the database every second (which 
+    would overload PostgreSQL with 40+ stores), we maintain persistent WS connections.
+    When a new event batch is ingested, we push the recalculated metrics directly 
+    to all subscribed clients.
+    """
     def __init__(self) -> None:
         # store_id → set of active WebSocket connections
         self._connections: dict[str, set[WebSocket]] = {}
@@ -71,7 +78,12 @@ manager = ConnectionManager()
 # ── Lifespan ───────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Startup: initialise DB. Shutdown: nothing special needed."""
+    """
+    Application startup/shutdown hook.
+    WHY: By initialising the DB schema here, we guarantee the tables exist before 
+    the API accepts any traffic. This prevents race conditions on container restart 
+    where the API might try to serve metrics before the DB is ready.
+    """
     logger.info("startup", message="Initialising database schema")
     await init_db()
     logger.info("startup", message="Store Intelligence API ready")
@@ -110,6 +122,12 @@ app.include_router(config_router, tags=["Config"])
 # ── Middleware: trace_id + latency + structured logging ────────────────────
 @app.middleware("http")
 async def logging_middleware(request: Request, call_next) -> Response:
+    """
+    WHY: In a distributed system with high event throughput, debugging a single 
+    failed request is difficult. We inject a unique `trace_id` at the edge and bind it 
+    to the structlog context so that all downstream logs (including DB queries) 
+    share the same ID.
+    """
     trace_id = str(uuid.uuid4())
     request.state.trace_id = trace_id
 

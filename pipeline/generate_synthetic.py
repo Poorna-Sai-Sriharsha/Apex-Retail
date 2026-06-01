@@ -96,7 +96,13 @@ def generate_visitor_session(
     go_to_billing: bool = True,
     abandon: bool = False,
 ) -> list[dict[str, Any]]:
-    """Generate a realistic visitor session with multiple events."""
+    """
+    Generate a realistic visitor session with multiple events.
+    WHY use probabilities for billing & abandonment? 
+    To create realistic conversion funnels where customers naturally drop off. 
+    This allows us to test our Anomaly Detection system's CONVERSION_DROP logic 
+    under simulated stress conditions.
+    """
     visitor_id = make_visitor_id()
     seq = 0
     events: list[dict[str, Any]] = []
@@ -250,6 +256,11 @@ def main() -> None:
 
     print(f"=== Generating synthetic events for {len(stores)} stores ===\n")
 
+    # WHY generate new UUIDs on every run?
+    # By creating fresh visitor_ids each time the script is executed, 
+    # we can continuously push load into the system and test database 
+    # scalability. The persistent DB naturally accumulates these visitors 
+    # (e.g., 40 -> 80 -> 120 unique visitors) over multiple runs.
     for store_id in stores:
         events = generate_store_events(store_id, num_visitors=args.visitors_per_store)
         all_events.extend(events)
@@ -264,7 +275,7 @@ def main() -> None:
     with open(output_path, "w", encoding="utf-8") as f:
         for event in all_events:
             f.write(json.dumps(event, ensure_ascii=False) + "\n")
-    print(f"\n  Total: {len(all_events)} events → {output_path}")
+    print(f"\n  Total: {len(all_events)} events -> {output_path}")
 
     # POST to API if URL provided
     if args.api_url:
