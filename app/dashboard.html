@@ -1256,9 +1256,9 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const cam of data.cameras) {
             const isActive = currentCamera === cam.camera_id;
             html += `
-                <div class="camera-item" data-camera="${cam.camera_id}" style="background: ${isActive ? 'var(--accent-glow)' : 'rgba(0,0,0,0.2)'}; border-color: ${isActive ? 'var(--accent-primary)' : 'var(--border-subtle)'}; padding: 10px; border-radius: 6px; border-style: solid; border-width: 1px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-                    <span style="font-size: 0.85rem; font-weight: ${isActive ? '600' : '500'}; color: ${isActive ? 'var(--accent-primary)' : 'inherit'};">${cam.camera_id}</span>
-                    <span style="font-size: 0.75rem; color: var(--status-good); display: flex; align-items: center; gap: 4px;">
+                <div class="camera-item" data-camera="${cam.camera_id}" style="background: ${isActive ? 'var(--accent-glow)' : 'rgba(0,0,0,0.2)'}; border-color: ${isActive ? 'var(--accent-primary)' : 'var(--border-subtle)'}; padding: 10px; border-radius: 6px; border-style: solid; border-width: 1px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 12px; overflow: hidden;">
+                    <span style="font-size: 0.85rem; font-weight: ${isActive ? '600' : '500'}; color: ${isActive ? 'var(--accent-primary)' : 'inherit'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${cam.camera_id}">${cam.camera_id}</span>
+                    <span style="font-size: 0.75rem; color: var(--status-good); display: flex; align-items: center; gap: 4px; flex-shrink: 0;">
                         <div class="pulse-dot" style="width: 6px; height: 6px; animation: none; box-shadow: none;"></div> Active
                     </span>
                 </div>
